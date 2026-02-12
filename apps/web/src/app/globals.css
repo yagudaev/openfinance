@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand Colors - The Blueprint */
+  --brand-graphite: #2D3142;
+  --brand-slate: #4F5D75;
+  --brand-silver: #BFC0C0;
+  --brand-violet: #7C3AED;
+  --brand-violet-light: #A78BFA;
+  --brand-success: #10B981;
+  --brand-warning: #F59E0B;
+  --brand-error: #EF4444;
+
+  /* Semantic Colors - Light Mode */
+  --background: #FFFFFF;
+  --foreground: #2D3142;
+  --card: #FFFFFF;
+  --card-foreground: #2D3142;
+  --muted: #F8F9FA;
+  --muted-foreground: #4F5D75;
+  --border: #E5E7EB;
+  --primary: #7C3AED;
+  --primary-foreground: #FFFFFF;
+}
+
+.dark {
+  --background: #1A1B23;
+  --foreground: #F8F9FA;
+  --card: #2D3142;
+  --card-foreground: #F8F9FA;
+  --muted: #2D3142;
+  --muted-foreground: #BFC0C0;
+  --border: #4F5D75;
+  --primary: #A78BFA;
+  --primary-foreground: #1A1B23;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}

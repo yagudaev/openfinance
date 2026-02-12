@@ -1,0 +1,22 @@
+{
+  "name": "@openfinance/agent",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx --env-file=../../.env.local ./src/server.ts"
+  },
+  "dependencies": {
+    "@openfinance/database": "workspace:*",
+    "@voltagent/core": "^0.1.0",
+    "@voltagent/server-hono": "^0.1.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

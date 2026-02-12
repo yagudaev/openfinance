@@ -1,0 +1,20 @@
+{
+  "name": "openfinance",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @openfinance/web dev",
+    "dev:marketing": "yarn workspace @openfinance/marketing dev",
+    "build": "yarn workspaces foreach -A run build",
+    "lint": "yarn workspaces foreach -A run lint",
+    "db:push": "yarn workspace @openfinance/database push",
+    "db:studio": "yarn workspace @openfinance/database studio"
+  },
+  "packageManager": "yarn@4.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

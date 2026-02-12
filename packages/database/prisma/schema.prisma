@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums as string fields (SQLite compatible)
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts     Account[]
+  statements   BankStatement[]
+  transactions Transaction[]
+  settings     UserSettings?
+}
+
+model UserSettings {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fiscalYearEndMonth Int     @default(12)
+  fiscalYearEndDay   Int     @default(31)
+  bankTimezone      String  @default("America/Vancouver")
+  userTimezone      String  @default("America/Vancouver")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Account {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountNumber String
+  nickname      String
+  bankName      String?
+  currency      String   @default("CAD")
+  accountType   String   @default("chequing") // chequing, savings, credit_card, etc
+  ownershipType String   @default("personal") // personal, business
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  statements BankStatement[]
+
+  @@unique([userId, accountNumber])
+}
+
+model BankStatement {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId      String?
+  account        Account? @relation(fields: [accountId], references: [id])
+  fileName       String
+  fileUrl        String
+  fileSize       Int
+  contentHash    String?
+  bankName       String
+  accountNumber  String?
+  statementDate  DateTime
+  periodStart    DateTime
+  periodEnd      DateTime
+  openingBalance Float
+  closingBalance Float
+  isProcessed    Boolean  @default(false)
+  processedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statementId     String
+  statement       BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  transactionDate DateTime
+  description     String
+  amount          Float
+  balance         Float?
+  transactionType String        @default("debit") // credit, debit
+  category        String?       // expense, income, transfer, owner-pay, etc
+  sortOrder       Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId, transactionDate])
+  @@index([statementId])
+}

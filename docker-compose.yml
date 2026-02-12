@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  openfinance:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/openfinance.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+
+  # Optional: VoltAgent debug server
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "3141:3141"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/openfinance.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    profiles:
+      - with-agent
