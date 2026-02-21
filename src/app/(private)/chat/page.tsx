@@ -35,10 +35,22 @@ export default async function ChatPage() {
     parts: [{ type: 'text' as const, text: m.content }],
   }))
 
+  // Check if user needs onboarding (no personal context set and no previous messages)
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId: session.user.id },
+  })
+
+  const totalMessages = await prisma.chatMessage.count({
+    where: { thread: { userId: session.user.id } },
+  })
+
+  const isNewUser = !settings?.aiContext && totalMessages === 0
+
   return (
     <ChatInterface
       threadId={thread.id}
       initialMessages={initialMessages}
+      isNewUser={isNewUser}
     />
   )
 }

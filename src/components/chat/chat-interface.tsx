@@ -89,12 +89,20 @@ const SUGGESTIONS = [
   'What is my account balance?',
 ]
 
+const ONBOARDING_SUGGESTIONS = [
+  'Help me get started with OpenFinance',
+  'What can you help me with?',
+  'I want to upload my first bank statement',
+  'Tell me about your features',
+]
+
 interface ChatInterfaceProps {
   threadId: string
   initialMessages?: UIMessage[]
+  isNewUser?: boolean
 }
 
-export function ChatInterface({ threadId: initialThreadId, initialMessages = [] }: ChatInterfaceProps) {
+export function ChatInterface({ threadId: initialThreadId, initialMessages = [], isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
   const [threadId, setThreadId] = useState(initialThreadId)
   const [input, setInput] = useState('')
@@ -169,13 +177,15 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [] 
               <Sparkles className="h-8 w-8 text-violet-600" />
             </div>
             <h2 className="mt-4 text-lg font-semibold text-gray-900">
-              Financial AI Assistant
+              {isNewUser ? 'Welcome to OpenFinance!' : 'Financial AI Assistant'}
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Ask me anything about your finances.
+              {isNewUser
+                ? 'I\'m your personal financial assistant. Let\'s get you set up!'
+                : 'Ask me anything about your finances.'}
             </p>
             <div className="mt-6 grid grid-cols-2 gap-2">
-              {SUGGESTIONS.map(suggestion => (
+              {(isNewUser ? ONBOARDING_SUGGESTIONS : SUGGESTIONS).map(suggestion => (
                 <button
                   key={suggestion}
                   onClick={() => handleSuggestion(suggestion)}

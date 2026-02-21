@@ -70,7 +70,7 @@ test.describe('Auth Flow', () => {
 
     // Should redirect to chat after sign up
     await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
-    await expect(page.getByText('OpenFinance')).toBeVisible()
+    await expect(page.getByText('OpenFinance').first()).toBeVisible()
 
     // Sign out
     await page.getByRole('button', { name: /sign out/i }).click()
