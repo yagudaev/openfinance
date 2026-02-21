@@ -3,6 +3,14 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 
+import {
+  calculateFederalTax,
+  calculateCompoundGrowth,
+  safeEvaluate,
+  getRRSPInfo,
+  getTFSAInfo,
+} from '@/lib/chat/finance-tools'
+
 export function createChatTools(userId: string) {
   return {
     search_transactions: tool({
@@ -298,6 +306,64 @@ export function createChatTools(userId: string) {
           console.error('update_settings error:', error)
           return { error: 'Failed to update settings', message: String(error) }
         }
+      },
+    }),
+
+    calculate_tax: tool({
+      description: 'Calculate Canadian federal income tax for a given annual income. Returns tax brackets, total tax, effective and marginal rates.',
+      inputSchema: z.object({
+        income: z.number().describe('Annual income in CAD'),
+      }),
+      execute: async ({ income }) => {
+        const result = calculateFederalTax(income)
+        return {
+          income: `$${income.toLocaleString()}`,
+          ...result,
+          effectiveRate: `${(result.effectiveRate * 100).toFixed(1)}%`,
+          marginalRate: `${(result.marginalRate * 100).toFixed(1)}%`,
+          totalTax: `$${result.totalTax.toLocaleString()}`,
+        }
+      },
+    }),
+
+    calculate_compound_growth: tool({
+      description: 'Calculate compound investment growth over time. Returns year-by-year projections with contributions and growth.',
+      inputSchema: z.object({
+        principal: z.number().describe('Initial investment amount'),
+        monthlyContribution: z.number().describe('Monthly contribution amount'),
+        annualRate: z.number().describe('Expected annual return rate as decimal (e.g., 0.07 for 7%)'),
+        years: z.number().describe('Number of years to project'),
+      }),
+      execute: async (params) => {
+        return calculateCompoundGrowth(params)
+      },
+    }),
+
+    calculate_rrsp: tool({
+      description: 'Get RRSP contribution information for a given income level. Returns contribution room, estimated tax refund, and marginal rate.',
+      inputSchema: z.object({
+        income: z.number().describe('Annual earned income in CAD'),
+      }),
+      execute: async ({ income }) => {
+        return getRRSPInfo(income)
+      },
+    }),
+
+    calculate_tfsa: tool({
+      description: 'Get TFSA contribution limit and tax-free growth information.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        return getTFSAInfo()
+      },
+    }),
+
+    evaluate_expression: tool({
+      description: 'Safely evaluate a mathematical expression using mathjs. Use for custom calculations that don\'t fit other tools.',
+      inputSchema: z.object({
+        expression: z.string().describe('Mathematical expression to evaluate (e.g., "50000 * 0.18", "compound interest formula")'),
+      }),
+      execute: async ({ expression }) => {
+        return safeEvaluate(expression)
       },
     }),
   }
