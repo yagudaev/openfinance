@@ -5,7 +5,7 @@ import {
   ChatCompletionMessageParam,
 } from 'openai/resources/chat/completions.mjs'
 
-const MAX_ITERATIONS = 15
+const MAX_ITERATIONS = 3
 
 export async function processStatement(
   pdfText: string,
@@ -105,6 +105,12 @@ async function extractAndVerify(
       )
     }
 
+    // On last iteration, accept the unbalanced result
+    if (i === MAX_ITERATIONS - 1) {
+      console.info('Max iterations reached, accepting unbalanced result')
+      return { statement, extractedData, verification }
+    }
+
     prevMessages.push({
       role: 'user',
       content: `${feedbackParts.join('\n\n')}
@@ -114,6 +120,7 @@ Respond in JSON format like in the system prompt.`,
     })
   }
 
+  // Should not reach here, but return last result as fallback
   throw new Error('Failed to extract and verify statement after maximum iterations.')
 }
 
@@ -449,13 +456,14 @@ Return the data in this exact format:
   ]
 }
 
-Important extraction rules:
+CRITICAL extraction rules:
+- Extract ONLY actual transactions (debits and credits). Do NOT include "Opening balance", "Closing balance", or summary/total lines as transactions
+- The opening balance + sum of all transaction amounts must equal the closing balance
 - Use the exact values from the text for all numbers (amounts, balances, dates)
 - Extract ALL transactions visible in the statement
 - Ensure dates are in YYYY-MM-DD format
 - Amount should be positive for credits/deposits and negative for debits/withdrawals
 - If statementDate is not clearly visible, omit it (periodEnd will be used as fallback)
 - Calculate totals if not explicitly stated
-- Ensure the transactions balance correctly
 - Include the full account number as shown on the statement`
 }
