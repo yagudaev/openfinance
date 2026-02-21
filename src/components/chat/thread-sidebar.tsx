@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, MessageSquare, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import {
   Sheet,
   SheetContent,
@@ -99,6 +100,7 @@ export function ThreadSidebar({
   onSelectThread,
   onNewThread,
 }: ThreadSidebarProps) {
+  const isMobile = useIsMobile()
   const [threads, setThreads] = useState<ThreadItem[]>([])
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -197,21 +199,9 @@ export function ThreadSidebar({
     </div>
   )
 
-  // Desktop: persistent sidebar
-  // Mobile: sheet overlay
-  return (
-    <>
-      {/* Desktop sidebar */}
-      <div
-        className={cn(
-          'hidden md:block shrink-0 border-r border-gray-200 bg-white transition-all duration-200',
-          isOpen ? 'w-72' : 'w-0 overflow-hidden',
-        )}
-      >
-        {sidebarContent}
-      </div>
-
-      {/* Mobile sheet */}
+  // Mobile: sheet overlay, Desktop: inline collapsible sidebar
+  if (isMobile) {
+    return (
       <Sheet open={isOpen} onOpenChange={open => { if (!open) onClose() }}>
         <SheetContent side="left" className="w-80 p-0">
           <SheetHeader className="sr-only">
@@ -220,6 +210,17 @@ export function ThreadSidebar({
           {sidebarContent}
         </SheetContent>
       </Sheet>
-    </>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'shrink-0 border-r border-gray-200 bg-white transition-all duration-200',
+        isOpen ? 'w-72' : 'w-0 overflow-hidden',
+      )}
+    >
+      {sidebarContent}
+    </div>
   )
 }
