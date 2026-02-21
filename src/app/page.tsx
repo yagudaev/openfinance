@@ -40,8 +40,8 @@ function Nav({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="flex items-center gap-3">
           {isLoggedIn ? (
             <Button size="sm" className="gap-2" asChild>
-              <Link href="/dashboard">
-                Go to Dashboard
+              <Link href="/chat">
+                Go to App
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -86,8 +86,8 @@ function Hero({ isLoggedIn }: { isLoggedIn: boolean }) {
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button size="lg" className="gap-2" asChild>
-            <Link href={isLoggedIn ? '/dashboard' : '/auth/sign-up'}>
-              {isLoggedIn ? 'Go to Dashboard' : 'Deploy in 5 minutes'}
+            <Link href={isLoggedIn ? '/chat' : '/auth/sign-up'}>
+              {isLoggedIn ? 'Go to App' : 'Deploy in 5 minutes'}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -318,8 +318,8 @@ function CallToAction({ isLoggedIn }: { isLoggedIn: boolean }) {
             className="gap-2"
             asChild
           >
-            <Link href={isLoggedIn ? '/dashboard' : '/auth/sign-up'}>
-              {isLoggedIn ? 'Go to Dashboard' : 'Get started for free'}
+            <Link href={isLoggedIn ? '/chat' : '/auth/sign-up'}>
+              {isLoggedIn ? 'Go to App' : 'Get started for free'}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
