@@ -3,6 +3,9 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { SettingsForm } from '@/components/settings/settings-form'
+import { ConnectedBanks } from '@/components/settings/connected-banks'
+import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
+import { getPlaidCredentials } from '@/lib/plaid'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -19,6 +22,9 @@ export default async function SettingsPage() {
     orderBy: { createdAt: 'asc' },
   })
 
+  const plaidCredentials = await getPlaidCredentials(session.user.id)
+  const plaidConfigured = plaidCredentials !== null
+
   return (
     <div>
       <div>
@@ -28,7 +34,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
         <SettingsForm
           settings={{
             fiscalYearEndMonth: settings.fiscalYearEndMonth,
@@ -47,6 +53,14 @@ export default async function SettingsPage() {
             accountType: a.accountType,
             ownershipType: a.ownershipType,
           }))}
+        />
+
+        <ConnectedBanks plaidConfigured={plaidConfigured} />
+
+        <PlaidKeysForm
+          plaidClientId={settings.plaidClientId}
+          plaidSecret={settings.plaidSecret}
+          plaidEnvironment={settings.plaidEnvironment}
         />
       </div>
     </div>

@@ -23,14 +23,15 @@ model User {
   sessions     Session[]
   accounts     Account[]
 
-  bankAccounts BankAccount[]
-  statements   BankStatement[]
-  transactions Transaction[]
-  settings     UserSettings?
-  memories     UserMemory[]
-  processingJobs ProcessingJob[]
-  chatThreads  ChatThread[]
-  chatTraces   ChatTrace[]
+  bankAccounts     BankAccount[]
+  statements       BankStatement[]
+  transactions     Transaction[]
+  settings         UserSettings?
+  memories         UserMemory[]
+  processingJobs   ProcessingJob[]
+  chatThreads      ChatThread[]
+  chatTraces       ChatTrace[]
+  plaidConnections PlaidConnection[]
 }
 
 model Session {
@@ -91,6 +92,9 @@ model UserSettings {
   userTimezone       String   @default("America/Vancouver")
   aiContext          String?
   aiModel            String   @default("openai/gpt-4o-mini")
+  plaidClientId      String?  // Self-hosted: user's own Plaid client ID
+  plaidSecret        String?  // Self-hosted: user's own Plaid secret
+  plaidEnvironment   String   @default("sandbox") // sandbox | development | production
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -165,26 +169,30 @@ model BankStatement {
 }
 
 model Transaction {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  statementId     String
-  statement       BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statementId     String?
+  statement       BankStatement? @relation(fields: [statementId], references: [id], onDelete: Cascade)
   transactionDate DateTime
   description     String
   amount          Float
   balance         Float?
-  transactionType String        @default("debit")
+  transactionType String         @default("debit")
   category        String?
   referenceNumber String?
   sortOrder       Int?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  source          String         @default("statement") // "manual" | "statement" | "plaid"
+  plaidId         String?        // Plaid transaction ID for dedup
+  isProvisional   Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([statementId, transactionDate, description, amount, balance])
   @@index([userId, transactionDate])
   @@index([statementId])
   @@index([category])
+  @@index([plaidId])
 }
 
 model BalanceVerification {
@@ -286,4 +294,26 @@ model ChatTrace {
   @@index([userId])
   @@index([threadId])
   @@index([createdAt])
+}
+
+// ============================================================
+// Plaid integration
+// ============================================================
+
+model PlaidConnection {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId   String
+  institutionName String
+  accessToken     String    // TODO: encrypt at rest
+  itemId          String    @unique
+  cursor          String?   // Plaid sync cursor for incremental updates
+  status          String    @default("active") // active | error | disconnected
+  errorMessage    String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
 }

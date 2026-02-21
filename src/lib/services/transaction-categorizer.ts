@@ -44,8 +44,8 @@ export async function categorizeTransactions(
       amount: t.amount,
       transaction_type: t.transactionType,
       transaction_date: t.transactionDate.toISOString().split('T')[0],
-      account_number: t.statement.accountNumber,
-      account_nickname: t.statement.accountNumber
+      account_number: t.statement?.accountNumber ?? null,
+      account_nickname: t.statement?.accountNumber
         ? nicknameMap[t.statement.accountNumber]
         : undefined,
     }))

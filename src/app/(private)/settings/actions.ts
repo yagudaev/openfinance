@@ -26,6 +26,24 @@ export async function updateSettings(data: {
   return { success: true }
 }
 
+export async function updatePlaidSettings(data: {
+  plaidClientId?: string | null
+  plaidSecret?: string | null
+  plaidEnvironment?: string
+}) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) return { success: false, error: 'Unauthorized' }
+
+  await prisma.userSettings.upsert({
+    where: { userId: session.user.id },
+    update: data,
+    create: { userId: session.user.id, ...data },
+  })
+
+  revalidatePath('/settings')
+  return { success: true }
+}
+
 export async function updateAccount(
   accountId: string,
   data: {

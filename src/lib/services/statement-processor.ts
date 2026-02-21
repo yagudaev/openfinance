@@ -4,6 +4,7 @@ import {
   ChatCompletionMessage,
   ChatCompletionMessageParam,
 } from 'openai/resources/chat/completions.mjs'
+import { reconcileProvisionalTransactions } from '@/lib/services/plaid-sync'
 
 const MAX_ITERATIONS = 3
 
@@ -29,6 +30,21 @@ export async function processStatement(
     userId,
     existingStatementId,
   )
+
+  // Reconcile provisional Plaid transactions that overlap with this statement
+  try {
+    const periodStart = new Date(extractedData.periodStart)
+    const periodEnd = new Date(extractedData.periodEnd)
+    await reconcileProvisionalTransactions(
+      userId,
+      periodStart,
+      periodEnd,
+      extractedData.accountNumber,
+    )
+  } catch (error) {
+    console.error('Plaid reconciliation error:', error)
+    // Non-fatal: statement processing still succeeds
+  }
 
   return {
     success: true,
