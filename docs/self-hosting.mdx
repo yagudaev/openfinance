@@ -1,0 +1,148 @@
+---
+title: Self-Hosting
+description: "Deploy OpenFinance on your own server with Docker."
+---
+
+# Self-Hosting
+
+OpenFinance is designed to be self-hosted. Your financial data stays on your server -- no third-party cloud services required.
+
+## Docker Deployment
+
+The simplest way to deploy OpenFinance is with Docker Compose.
+
+<Steps>
+  <Step title="Create a project directory">
+    ```bash
+    mkdir openfinance && cd openfinance
+    ```
+  </Step>
+
+  <Step title="Create a docker-compose.yml">
+    ```yaml docker-compose.yml
+    services:
+      web:
+        image: ghcr.io/nano3labs/openfinance:latest
+        ports:
+          - "3000:3000"
+        environment:
+          - DATABASE_URL=file:./data/openfinance.db
+          - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+          - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+          - OPENAI_API_KEY=${OPENAI_API_KEY}
+        volumes:
+          - openfinance-data:/app/data
+        restart: unless-stopped
+
+    volumes:
+      openfinance-data:
+    ```
+  </Step>
+
+  <Step title="Create a .env file">
+    ```bash .env
+    BETTER_AUTH_URL=https://finance.yourdomain.com
+    BETTER_AUTH_SECRET=your-secret-here
+    OPENAI_API_KEY=sk-...
+    ```
+
+    Generate a secret:
+    ```bash
+    openssl rand -base64 32
+    ```
+  </Step>
+
+  <Step title="Start the service">
+    ```bash
+    docker compose up -d
+    ```
+
+    The app runs on port 3000. The database is automatically created and migrated on first startup.
+  </Step>
+</Steps>
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | SQLite connection string. Use `file:./data/openfinance.db` for Docker. |
+| `BETTER_AUTH_SECRET` | Yes | Secret key for session encryption. Generate with `openssl rand -base64 32`. |
+| `BETTER_AUTH_URL` | Yes | Public URL of your instance (e.g., `https://finance.yourdomain.com`). |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for AI statement processing and chat. |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID for "Sign in with Google". |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret. |
+
+## Building from Source
+
+If you prefer to build the Docker image yourself:
+
+```bash
+git clone https://github.com/nano3labs/openfinance.git
+cd openfinance
+docker build -t openfinance .
+```
+
+Then update your `docker-compose.yml` to use `image: openfinance` instead of the registry image.
+
+## Reverse Proxy (HTTPS)
+
+In production, put OpenFinance behind a reverse proxy with HTTPS. Here is an example using Caddy:
+
+```
+finance.yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+Caddy automatically provisions and renews TLS certificates. Make sure `BETTER_AUTH_URL` matches the public HTTPS URL.
+
+<Tabs>
+  <Tab title="Caddy">
+    ```
+    finance.yourdomain.com {
+        reverse_proxy localhost:3000
+    }
+    ```
+  </Tab>
+  <Tab title="Nginx">
+    ```nginx
+    server {
+        listen 443 ssl;
+        server_name finance.yourdomain.com;
+
+        ssl_certificate /etc/letsencrypt/live/finance.yourdomain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/finance.yourdomain.com/privkey.pem;
+
+        location / {
+            proxy_pass http://localhost:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Data & Backups
+
+OpenFinance stores everything in a single SQLite database file. To back up your data:
+
+```bash
+# Copy the database file from the Docker volume
+docker cp openfinance-web-1:/app/data/openfinance.db ./backup-$(date +%Y%m%d).db
+```
+
+To restore from a backup, copy the file back into the volume and restart the container.
+
+## Production Considerations
+
+- **HTTPS is required** for secure authentication cookies. Always run behind a reverse proxy with TLS in production.
+- **Regular backups** -- schedule a cron job to copy the SQLite database file.
+- **Resource requirements** -- OpenFinance is lightweight. A 1 CPU / 1 GB RAM VPS is sufficient for a single user.
+- **Updates** -- pull the latest image and restart:
+  ```bash
+  docker compose pull
+  docker compose up -d
+  ```

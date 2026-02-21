@@ -1,0 +1,68 @@
+---
+title: Bank Statements
+description: "Upload and process bank statement PDFs with AI-powered extraction."
+---
+
+# Bank Statements
+
+OpenFinance extracts transactions from bank statement PDFs using AI. Upload a PDF, and the system automatically identifies transactions, amounts, dates, and balances.
+
+## How It Works
+
+<Steps>
+  <Step title="Upload a PDF">
+    Navigate to **Statements** and click **Upload Statement**. Select one or more bank statement PDF files.
+  </Step>
+
+  <Step title="AI processes the statement">
+    The system converts PDF pages to images, extracts text, and sends both to OpenAI's GPT-4o-mini model. The AI identifies:
+    - Bank name and account number
+    - Statement period (start and end dates)
+    - Opening and closing balances
+    - All individual transactions with dates, descriptions, and amounts
+  </Step>
+
+  <Step title="Balance verification">
+    After extracting transactions, the system calculates whether the sum of transactions matches the stated opening and closing balances. If there is a discrepancy, the AI retries extraction (up to 15 attempts) to improve accuracy.
+  </Step>
+
+  <Step title="Transactions are saved">
+    Once verified, all transactions are saved to the database and automatically linked to the correct bank account. If the account does not exist yet, it is created.
+  </Step>
+</Steps>
+
+## Supported Banks
+
+OpenFinance works with any bank that provides PDF statements. The AI model adapts to different statement formats. Commonly used with:
+
+- Canadian banks (TD, RBC, BMO, Scotiabank, CIBC)
+- US banks (Chase, Bank of America, Wells Fargo)
+- Credit unions and online banks
+
+## Statement Details
+
+After processing, each statement shows:
+
+| Field | Description |
+|-------|-------------|
+| Bank Name | Automatically detected from the PDF |
+| Account Number | Extracted account identifier |
+| Period | Start and end date of the statement |
+| Opening Balance | Balance at the start of the period |
+| Closing Balance | Balance at the end of the period |
+| Verification Status | Whether the extracted transactions balance correctly |
+| Transaction Count | Number of transactions extracted |
+
+## Viewing a Statement
+
+Click on any statement to see its detail view. This shows all extracted transactions for that statement period, along with the verification status.
+
+## Duplicate Detection
+
+OpenFinance computes a content hash for each uploaded PDF. If you upload the same file twice, the system detects it as a duplicate and warns you.
+
+## Tips
+
+- Upload statements in chronological order for the best experience with balance tracking
+- Statements work best when they are unmodified PDFs from your bank (not scanned paper copies)
+- After processing, review the transactions and correct any categorization errors -- the AI learns from your data patterns over time
