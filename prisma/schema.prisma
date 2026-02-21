@@ -30,6 +30,7 @@ model User {
   memories     UserMemory[]
   processingJobs ProcessingJob[]
   chatThreads  ChatThread[]
+  chatTraces   ChatTrace[]
 }
 
 model Session {
@@ -262,4 +263,26 @@ model ChatMessage {
   createdAt  DateTime @default(now())
 
   @@index([threadId])
+}
+
+model ChatTrace {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadId       String?
+  model          String
+  inputTokens    Int?
+  outputTokens   Int?
+  totalTokens    Int?
+  latencyMs      Int?
+  finishReason   String?
+  steps          String   // JSON: array of step data (tool calls, tool results, text)
+  userMessage    String?  // The user's prompt that triggered this trace
+  assistantText  String?  // The final assistant text output
+  error          String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([threadId])
+  @@index([createdAt])
 }

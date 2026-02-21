@@ -81,33 +81,82 @@ export async function POST(request: Request) {
     }
   }
 
+  // Extract the user's latest message for the trace
+  const lastUserMessage = messages.filter(m => m.role === 'user').pop()
+  const userMessageText = lastUserMessage ? extractTextContent(lastUserMessage) : undefined
+
+  const startTime = Date.now()
+
   const result = streamText({
     model: getModel(modelId),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5),
-    onFinish: async ({ text, response }) => {
-      if (!threadId) return
+    onFinish: async ({ text, response, steps, totalUsage, finishReason }) => {
+      const latencyMs = Date.now() - startTime
 
+      // Save assistant message to thread
+      if (threadId) {
+        try {
+          // Extract tool call info from response for debugging/tracing
+          const toolCalls = response.messages
+            .filter(m => m.role === 'assistant')
+            .flatMap(m => Array.isArray(m.content) ? m.content : [])
+            .filter(c => typeof c === 'object' && c.type === 'tool-call')
+
+          await prisma.chatMessage.create({
+            data: {
+              threadId,
+              role: 'assistant',
+              content: text || '',
+              toolCalls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
+              model: modelId,
+            },
+          })
+        } catch (error) {
+          console.error('Failed to save assistant message:', error)
+        }
+      }
+
+      // Save trace data for debugging
       try {
-        // Extract tool call info from response for debugging/tracing
-        const toolCalls = response.messages
-          .filter(m => m.role === 'assistant')
-          .flatMap(m => Array.isArray(m.content) ? m.content : [])
-          .filter(c => typeof c === 'object' && c.type === 'tool-call')
+        const stepsData = steps.map((step, index) => ({
+          stepNumber: index,
+          text: step.text || undefined,
+          toolCalls: step.toolCalls.map(tc => ({
+            toolName: tc.toolName,
+            args: tc.input,
+          })),
+          toolResults: step.toolResults.map(tr => ({
+            toolName: tr.toolName,
+            args: tr.input,
+            result: tr.output,
+          })),
+          finishReason: step.finishReason,
+          usage: {
+            inputTokens: step.usage.inputTokens,
+            outputTokens: step.usage.outputTokens,
+          },
+        }))
 
-        await prisma.chatMessage.create({
+        await prisma.chatTrace.create({
           data: {
-            threadId,
-            role: 'assistant',
-            content: text || '',
-            toolCalls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
+            userId: session.user.id,
+            threadId: threadId ?? null,
             model: modelId,
+            inputTokens: totalUsage.inputTokens ?? null,
+            outputTokens: totalUsage.outputTokens ?? null,
+            totalTokens: (totalUsage.inputTokens ?? 0) + (totalUsage.outputTokens ?? 0) || null,
+            latencyMs,
+            finishReason,
+            steps: JSON.stringify(stepsData),
+            userMessage: userMessageText ?? null,
+            assistantText: text || null,
           },
         })
       } catch (error) {
-        console.error('Failed to save assistant message:', error)
+        console.error('Failed to save chat trace:', error)
       }
     },
   })
