@@ -59,6 +59,22 @@ yarn db:generate          # Generate Prisma client
 - Top-to-bottom reading order: exports first, helpers below
 - See `docs/CODE_STYLE.md` for full details
 
+## Ticket Workflow
+
+When working through Linear tickets:
+
+1. Check Linear for OpenFinance backlog tickets
+2. Create a git worktree per ticket: `git worktree add ../openfinance-nan-XXX -b michael/nan-XXX-slug`
+3. In the worktree, run `yarn install --immutable && yarn db:generate` before any work
+4. After changes, verify with `npx tsc --noEmit`
+5. Rebase on latest main, commit, push, create PR via `gh pr create`
+6. Wait for CI (Lint & Typecheck + E2E Tests must pass; Mintlify failure is external — ignore)
+7. Merge with `gh pr merge N --squash --delete-branch`
+8. Clean up: `git worktree remove ../openfinance-nan-XXX --force`
+9. Update Linear ticket to "Done"
+
+Multiple tickets can run in parallel using separate worktrees. When branches touch the same file, merge the first PR then rebase the second.
+
 ## Critical Rules
 
 1. **NEVER delete the database** without explicit permission
