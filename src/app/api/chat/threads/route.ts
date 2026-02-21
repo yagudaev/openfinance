@@ -1,43 +1,50 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   }
 
-  let thread = await prisma.chatThread.findFirst({
-    where: { userId: session.user.id, isArchived: false },
+  const search = request.nextUrl.searchParams.get('search')?.trim() ?? ''
+
+  const threads = await prisma.chatThread.findMany({
+    where: {
+      userId: session.user.id,
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search } },
+              { messages: { some: { content: { contains: search } } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { updatedAt: 'desc' },
     include: {
       messages: {
+        where: { role: 'user' },
         orderBy: { createdAt: 'asc' },
+        take: 1,
+      },
+      _count: {
+        select: { messages: true },
       },
     },
   })
 
-  if (!thread) {
-    thread = await prisma.chatThread.create({
-      data: { userId: session.user.id },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    })
-  }
+  const threadList = threads.map(thread => ({
+    id: thread.id,
+    title: thread.title ?? thread.messages[0]?.content?.slice(0, 80) ?? 'New conversation',
+    updatedAt: thread.updatedAt.toISOString(),
+    isArchived: thread.isArchived,
+    messageCount: thread._count.messages,
+  }))
 
-  return Response.json({
-    threadId: thread.id,
-    messages: thread.messages.map(m => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      createdAt: m.createdAt,
-    })),
-  })
+  return Response.json({ threads: threadList })
 }
 
 export async function POST() {
