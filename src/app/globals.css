@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+}
+
 :root {
   /* Brand Colors - The Blueprint */
   --brand-graphite: #2D3142;
@@ -19,8 +43,17 @@
   --muted: #F8F9FA;
   --muted-foreground: #4F5D75;
   --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #7C3AED;
   --primary: #7C3AED;
   --primary-foreground: #FFFFFF;
+  --secondary: #F8F9FA;
+  --secondary-foreground: #2D3142;
+  --accent: #F3F4F6;
+  --accent-foreground: #2D3142;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --radius: 0.5rem;
 }
 
 .dark {
@@ -31,11 +64,20 @@
   --muted: #2D3142;
   --muted-foreground: #BFC0C0;
   --border: #4F5D75;
+  --input: #4F5D75;
+  --ring: #A78BFA;
   --primary: #A78BFA;
   --primary-foreground: #1A1B23;
+  --secondary: #2D3142;
+  --secondary-foreground: #F8F9FA;
+  --accent: #2D3142;
+  --accent-foreground: #F8F9FA;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-body);
 }

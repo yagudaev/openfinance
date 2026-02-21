@@ -7,34 +7,93 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums as string fields (SQLite compatible)
+// ============================================================
+// BetterAuth tables (managed by better-auth)
+// ============================================================
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  sessions     Session[]
   accounts     Account[]
+
+  bankAccounts BankAccount[]
   statements   BankStatement[]
   transactions Transaction[]
   settings     UserSettings?
+  processingJobs ProcessingJob[]
+  chatThreads  ChatThread[]
 }
 
-model UserSettings {
-  id                String  @id @default(uuid())
-  userId            String  @unique
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fiscalYearEndMonth Int     @default(12)
-  fiscalYearEndDay   Int     @default(31)
-  bankTimezone      String  @default("America/Vancouver")
-  userTimezone      String  @default("America/Vancouver")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// ============================================================
+// App tables (ported from keeping-books)
+// ============================================================
+
+model UserSettings {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fiscalYearEndMonth Int      @default(12)
+  fiscalYearEndDay   Int      @default(31)
+  bankTimezone       String   @default("America/Vancouver")
+  userTimezone       String   @default("America/Vancouver")
+  aiContext          String?
+  aiModel            String   @default("openai/gpt-4o-mini")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model BankAccount {
   id            String   @id @default(uuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -42,39 +101,51 @@ model Account {
   nickname      String
   bankName      String?
   currency      String   @default("CAD")
-  accountType   String   @default("chequing") // chequing, savings, credit_card, etc
-  ownershipType String   @default("personal") // personal, business
+  accountType   String   @default("chequing")
+  ownershipType String   @default("personal")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   statements BankStatement[]
 
   @@unique([userId, accountNumber])
+  @@index([userId])
 }
 
 model BankStatement {
-  id             String   @id @default(uuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId      String?
-  account        Account? @relation(fields: [accountId], references: [id])
-  fileName       String
-  fileUrl        String
-  fileSize       Int
-  contentHash    String?
-  bankName       String
-  accountNumber  String?
-  statementDate  DateTime
-  periodStart    DateTime
-  periodEnd      DateTime
-  openingBalance Float
-  closingBalance Float
-  isProcessed    Boolean  @default(false)
-  processedAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccountId      String?
+  bankAccount        BankAccount? @relation(fields: [bankAccountId], references: [id])
+  fileName           String
+  fileUrl            String
+  fileSize           Int
+  contentHash        String?
+  duplicateOf        String?
+  bankName           String
+  accountNumber      String?
+  statementDate      DateTime
+  periodStart        DateTime
+  periodEnd          DateTime
+  openingBalance     Float
+  closingBalance     Float
+  totalDeposits      Float?
+  totalWithdrawals   Float?
+  isProcessed        Boolean   @default(false)
+  processedAt        DateTime?
+  processingTimezone String?
+  verificationStatus String?
+  discrepancyAmount  Float?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  transactions Transaction[]
+  transactions        Transaction[]
+  balanceVerification BalanceVerification?
+  processingJobs      ProcessingJob[]
+
+  @@index([userId])
+  @@index([contentHash])
 }
 
 model Transaction {
@@ -87,12 +158,93 @@ model Transaction {
   description     String
   amount          Float
   balance         Float?
-  transactionType String        @default("debit") // credit, debit
-  category        String?       // expense, income, transfer, owner-pay, etc
+  transactionType String        @default("debit")
+  category        String?
+  referenceNumber String?
   sortOrder       Int?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  @@unique([statementId, transactionDate, description, amount, balance])
   @@index([userId, transactionDate])
   @@index([statementId])
+  @@index([category])
+}
+
+model BalanceVerification {
+  id                        String   @id @default(uuid())
+  statementId               String   @unique
+  statement                 BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  calculatedOpeningBalance  Float
+  calculatedClosingBalance  Float
+  statementOpeningBalance   Float
+  statementClosingBalance   Float
+  isBalanced                Boolean
+  discrepancyAmount         Float?
+  verificationDate          DateTime @default(now())
+  notes                     String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model ProcessingJob {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statementId String?
+  statement   BankStatement? @relation(fields: [statementId], references: [id])
+  fileName    String
+  status      String    @default("pending")
+  errorMessage String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  logs ProcessingLog[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ProcessingLog {
+  id             String   @id @default(uuid())
+  jobId          String
+  job            ProcessingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sequenceNumber Int
+  logType        String
+  title          String?
+  content        String?
+  createdAt      DateTime @default(now())
+
+  @@index([jobId])
+  @@index([jobId, sequenceNumber])
+}
+
+model ChatThread {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String?
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  threadId   String
+  thread     ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role       String
+  content    String
+  toolCalls  String?
+  toolCallId String?
+  model      String?
+  createdAt  DateTime @default(now())
+
+  @@index([threadId])
 }
