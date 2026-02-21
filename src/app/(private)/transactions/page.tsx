@@ -98,8 +98,10 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           balance: t.balance,
           category: t.category,
           transactionType: t.transactionType,
-          bankName: t.statement.bankName,
-          accountNumber: t.statement.accountNumber,
+          bankName: t.statement?.bankName ?? 'Plaid',
+          accountNumber: t.statement?.accountNumber ?? null,
+          source: t.source,
+          isProvisional: t.isProvisional,
         }))}
         sortColumn={sortColumn}
         sortOrder={sortOrder}

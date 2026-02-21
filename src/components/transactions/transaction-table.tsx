@@ -14,6 +14,8 @@ interface TransactionRow {
   transactionType: string
   bankName: string
   accountNumber: string | null
+  source?: string
+  isProvisional?: boolean
 }
 
 interface TransactionTableProps {
@@ -96,9 +98,21 @@ export function TransactionTable({ transactions, sortColumn, sortOrder }: Transa
         </thead>
         <tbody className="divide-y divide-gray-200">
           {transactions.map(tx => (
-            <tr key={tx.id} className="hover:bg-gray-50">
+            <tr key={tx.id} className={`hover:bg-gray-50 ${tx.isProvisional ? 'bg-amber-50/50' : ''}`}>
               <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500">
-                {formatDate(tx.date, 'MMM dd, yyyy')}
+                <span className="flex items-center gap-1.5">
+                  {formatDate(tx.date, 'MMM dd, yyyy')}
+                  {tx.isProvisional && (
+                    <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700" title="Provisional: synced via Plaid, pending statement reconciliation">
+                      provisional
+                    </span>
+                  )}
+                  {tx.source === 'plaid' && !tx.isProvisional && (
+                    <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700" title="Synced via Plaid">
+                      synced
+                    </span>
+                  )}
+                </span>
               </td>
               <td className="px-6 py-3 text-sm text-gray-900">
                 {tx.description}

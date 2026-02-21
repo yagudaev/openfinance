@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const publicPrefixes = ['/auth/login', '/auth/sign-up', '/api/auth', '/test-statement']
+const publicPrefixes = ['/auth/login', '/auth/sign-up', '/api/auth', '/api/plaid/webhook', '/test-statement']
 const publicExact = ['/']
 
 function isPublicPath(pathname: string) {

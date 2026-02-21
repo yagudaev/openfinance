@@ -74,8 +74,8 @@ export function createChatTools(userId: string) {
               amount: t.amount,
               type: t.transactionType,
               category: t.category || 'Uncategorized',
-              bank: t.statement.bankName,
-              account: t.statement.accountNumber,
+              bank: t.statement?.bankName ?? 'Plaid',
+              account: t.statement?.accountNumber ?? null,
             })),
             summary: {
               totalCredits: `$${totalCredits.toFixed(2)}`,
