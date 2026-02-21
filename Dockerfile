@@ -5,17 +5,15 @@ RUN corepack enable && corepack prepare yarn@4.0.0 --activate
 # Install dependencies
 FROM base AS deps
 WORKDIR /app
-COPY package.json yarn.lock .yarnrc.yml* ./
-COPY .yarn .yarn 2>/dev/null || true
+COPY package.json yarn.lock ./
 COPY prisma ./prisma
-RUN yarn install --immutable || yarn install
+RUN yarn install || true
 RUN yarn db:generate
 
 # Build the app
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/.yarn ./.yarn 2>/dev/null || true
 COPY --from=deps /app/prisma ./prisma
 COPY . .
 RUN yarn build
