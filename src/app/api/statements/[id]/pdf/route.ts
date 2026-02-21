@@ -25,7 +25,7 @@ export async function GET(
   }
 
   try {
-    const filePath = join(process.cwd(), statement.fileUrl)
+    const filePath = join(process.cwd(), 'data', 'uploads', statement.fileUrl)
     const fileBuffer = await readFile(filePath)
 
     return new Response(fileBuffer, {

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date'
 import { toggleHumanVerified, reprocessStatement, deleteStatement } from '@/app/(private)/statements/actions'
+import { TransactionGrid } from '@/components/transactions/transaction-grid'
 
 interface Transaction {
   id: string
@@ -352,54 +353,11 @@ export function StatementDetail({ statement: initial }: StatementDetailProps) {
           <h2 className="text-lg font-semibold text-gray-900">
             Transactions ({statement.transactions.length})
           </h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Click a cell to edit. Changes save automatically.
+          </p>
           <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <div className="max-h-[600px] overflow-y-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="sticky top-0 bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Category
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {statement.transactions.map(tx => (
-                    <tr key={tx.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-4 py-2.5 text-sm text-gray-500">
-                        {formatDate(tx.date, 'MMM dd')}
-                      </td>
-                      <td className="max-w-[200px] truncate px-4 py-2.5 text-sm text-gray-900">
-                        {tx.description}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-sm">
-                        {tx.category ? (
-                          <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                            {tx.category.replace('-', ' ')}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">&mdash;</span>
-                        )}
-                      </td>
-                      <td className={`whitespace-nowrap px-4 py-2.5 text-right text-sm font-medium ${
-                        tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'
-                      }`}>
-                        {tx.amount >= 0 ? '+' : ''}
-                        ${Math.abs(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TransactionGrid transactions={statement.transactions} />
           </div>
         </div>
       </div>
