@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Loader2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 export function UploadButton() {
   const [uploading, setUploading] = useState(false)
-  const [status, setStatus] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -16,10 +16,12 @@ export function UploadButton() {
     if (!file) return
 
     setUploading(true)
+    const toastId = toast.loading('Uploading PDF...', {
+      description: file.name,
+    })
 
     try {
       // Upload PDF
-      setStatus('Uploading PDF...')
       const formData = new FormData()
       formData.append('file', file)
 
@@ -36,7 +38,11 @@ export function UploadButton() {
       const { filePath, fileName, size } = await uploadRes.json()
 
       // Process statement with AI
-      setStatus('Processing with AI...')
+      toast.loading('Processing with AI...', {
+        id: toastId,
+        description: `${fileName} — Extracting text and analyzing transactions`,
+      })
+
       const processRes = await fetch('/api/process-statement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,7 +52,10 @@ export function UploadButton() {
       const result = await processRes.json()
 
       if (processRes.status === 409 && result.isDuplicate) {
-        setStatus('Duplicate statement detected')
+        toast.warning('Duplicate statement', {
+          id: toastId,
+          description: `${fileName} has already been uploaded`,
+        })
         return
       }
 
@@ -54,16 +63,23 @@ export function UploadButton() {
         throw new Error(result.error || 'Processing failed')
       }
 
-      setStatus('Done!')
+      const transactionCount = result.data?.transactionCount ?? 0
+      const balanceStatus = result.data?.isBalanced ? 'Balanced' : 'Unbalanced'
+
+      toast.success('Statement processed!', {
+        id: toastId,
+        description: `${transactionCount} transactions extracted — ${balanceStatus}`,
+      })
+
       router.refresh()
     } catch (error) {
       console.error('Upload error:', error)
-      setStatus(error instanceof Error ? error.message : 'Upload failed')
+      toast.error('Processing failed', {
+        id: toastId,
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
     } finally {
-      setTimeout(() => {
-        setUploading(false)
-        setStatus('')
-      }, 2000)
+      setUploading(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -89,7 +105,7 @@ export function UploadButton() {
         {uploading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            {status || 'Processing...'}
+            Processing...
           </>
         ) : (
           <>
