@@ -18,8 +18,9 @@ test.describe('Navigation', () => {
     await expect(page.getByRole('heading', { name: 'Statements' })).toBeVisible()
   })
 
-  test('can navigate to chat page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Chat' }).click()
+  test('can navigate to chat page via Home link', async ({ page }) => {
+    await page.goto('/dashboard')
+    await page.getByRole('link', { name: 'Home' }).click()
     await expect(page).toHaveURL(/\/chat/)
   })
 
@@ -29,9 +30,8 @@ test.describe('Navigation', () => {
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
   })
 
-  test('can navigate back to dashboard from any page', async ({ page }) => {
-    await page.goto('/transactions')
-    await page.getByRole('link', { name: 'Home' }).click()
+  test('can navigate to dashboard page', async ({ page }) => {
+    await page.getByRole('link', { name: 'Dashboard' }).click()
     await expect(page).toHaveURL(/\/dashboard/)
   })
 })

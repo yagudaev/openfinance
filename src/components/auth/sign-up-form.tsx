@@ -90,7 +90,7 @@ export function SignUpForm({
       return
     }
 
-    router.push('/dashboard')
+    router.push('/chat')
   }
 
   async function handleGoogleSignUp() {
@@ -99,7 +99,7 @@ export function SignUpForm({
 
     await authClient.signIn.social({
       provider: 'google',
-      callbackURL: '/dashboard',
+      callbackURL: '/chat',
     })
   }
 

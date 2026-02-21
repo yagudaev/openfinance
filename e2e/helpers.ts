@@ -5,7 +5,7 @@ const AUTH_PASSWORD = 'E2eTestPass123!'
 const AUTH_NAME = 'E2E Test User'
 
 export async function ensureLoggedIn(page: Page) {
-  await page.goto('/dashboard')
+  await page.goto('/chat')
 
   // If redirected to login, create account or log in
   if (page.url().includes('/auth/login')) {
@@ -27,6 +27,6 @@ export async function ensureLoggedIn(page: Page) {
       await page.getByRole('button', { name: 'Sign up', exact: true }).click()
     }
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
   }
 }
