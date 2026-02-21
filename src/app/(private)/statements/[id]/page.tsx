@@ -40,6 +40,7 @@ export default async function StatementDetailPage({ params }: Props) {
     verificationStatus: statement.verificationStatus,
     discrepancyAmount: statement.discrepancyAmount,
     isProcessed: statement.isProcessed,
+    fileUrl: statement.fileUrl,
     transactions: statement.transactions.map(tx => ({
       id: tx.id,
       date: tx.transactionDate.toISOString(),
