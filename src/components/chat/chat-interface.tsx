@@ -89,6 +89,13 @@ const SUGGESTIONS = [
   'What is my account balance?',
 ]
 
+const ONBOARDING_SUGGESTIONS = [
+  'Help me get started with OpenFinance',
+  'What can you help me with?',
+  'I want to upload my first bank statement',
+  'Tell me about your features',
+]
+
 interface ChatInterfaceProps {
   threadId: string
   initialMessages?: UIMessage[]
@@ -121,20 +128,12 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
   })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [hasTriggeredOnboarding, setHasTriggeredOnboarding] = useState(false)
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    if (isNewUser && !hasTriggeredOnboarding && messages.length === 0) {
-      setHasTriggeredOnboarding(true)
-      sendMessage({ text: 'Hi! I just signed up. Help me get started with OpenFinance.' })
-    }
-  }, [isNewUser, hasTriggeredOnboarding, messages.length, sendMessage])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -178,13 +177,15 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
               <Sparkles className="h-8 w-8 text-violet-600" />
             </div>
             <h2 className="mt-4 text-lg font-semibold text-gray-900">
-              Financial AI Assistant
+              {isNewUser ? 'Welcome to OpenFinance!' : 'Financial AI Assistant'}
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Ask me anything about your finances.
+              {isNewUser
+                ? 'I\'m your personal financial assistant. Let\'s get you set up!'
+                : 'Ask me anything about your finances.'}
             </p>
             <div className="mt-6 grid grid-cols-2 gap-2">
-              {SUGGESTIONS.map(suggestion => (
+              {(isNewUser ? ONBOARDING_SUGGESTIONS : SUGGESTIONS).map(suggestion => (
                 <button
                   key={suggestion}
                   onClick={() => handleSuggestion(suggestion)}
