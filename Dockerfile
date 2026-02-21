@@ -5,9 +5,9 @@ RUN corepack enable && corepack prepare yarn@4.0.0 --activate
 # Install dependencies
 FROM base AS deps
 WORKDIR /app
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock .yarnrc.yml ./
 COPY prisma ./prisma
-RUN yarn install || true
+RUN yarn install
 RUN yarn db:generate
 
 # Build the app
@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn build
 
 # Production image
