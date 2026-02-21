@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { readFile, stat } from 'fs/promises'
-import { join } from 'path'
+import { join, extname } from 'path'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 
@@ -498,6 +498,81 @@ export function createChatTools(userId: string) {
         } catch (error) {
           console.error('delete_memory error:', error)
           return { error: 'Failed to delete memory', message: String(error) }
+        }
+      },
+    }),
+
+    read_file: tool({
+      description:
+        'Read the contents of an uploaded file. Use this to read text files (markdown, CSV, TXT), extract text from PDFs, or examine file contents before deciding how to process them. For bank statement PDFs, prefer using process_statements instead.',
+      inputSchema: z.object({
+        filePath: z.string().describe(
+          'File path relative to data/uploads/ (from the [Attached file: name (path)] reference)',
+        ),
+      }),
+      execute: async ({ filePath }) => {
+        const MAX_CHARS = 50_000
+        const fileName = filePath.split('/').pop() || filePath
+        const ext = extname(fileName).toLowerCase()
+
+        try {
+          const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
+
+          // Image files — cannot read as text
+          if (['.jpg', '.jpeg', '.png'].includes(ext)) {
+            return {
+              fileName,
+              fileType: ext.slice(1),
+              error: 'This is an image file. I can see it was uploaded but cannot read image contents as text.',
+            }
+          }
+
+          // Excel files — suggest CSV export
+          if (['.xlsx', '.xls'].includes(ext)) {
+            return {
+              fileName,
+              fileType: ext.slice(1),
+              error: 'This is an Excel file. For best results, export it as CSV first.',
+            }
+          }
+
+          // PDF files — extract text with pdf-parse
+          if (ext === '.pdf') {
+            const pdfBuffer = await readFile(fullPath)
+            const pdfData = await pdfParse(pdfBuffer)
+            const text: string = pdfData.text || ''
+
+            if (!text.trim()) {
+              return {
+                fileName,
+                fileType: 'pdf',
+                error: 'Could not extract text from PDF. The file may be scanned/image-based.',
+              }
+            }
+
+            const content = text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text
+            return {
+              fileName,
+              fileType: 'pdf',
+              content,
+              charCount: text.length,
+              truncated: text.length > MAX_CHARS,
+            }
+          }
+
+          // Text-based files (md, txt, csv, and anything else)
+          const raw = await readFile(fullPath, 'utf-8')
+          const content = raw.length > MAX_CHARS ? raw.slice(0, MAX_CHARS) : raw
+          return {
+            fileName,
+            fileType: ext ? ext.slice(1) : 'unknown',
+            content,
+            charCount: raw.length,
+            truncated: raw.length > MAX_CHARS,
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          return { fileName, fileType: ext ? ext.slice(1) : 'unknown', error: message }
         }
       },
     }),
