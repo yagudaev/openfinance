@@ -22,14 +22,14 @@ The simplest way to deploy OpenFinance is with Docker Compose.
     ```yaml docker-compose.yml
     services:
       web:
-        image: ghcr.io/nano3labs/openfinance:latest
+        image: ghcr.io/yagudaev/openfinance:latest
         ports:
           - "3000:3000"
         environment:
           - DATABASE_URL=file:./data/openfinance.db
           - BETTER_AUTH_URL=${BETTER_AUTH_URL}
           - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-          - OPENAI_API_KEY=${OPENAI_API_KEY}
+          - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
         volumes:
           - openfinance-data:/app/data
         restart: unless-stopped
@@ -43,7 +43,7 @@ The simplest way to deploy OpenFinance is with Docker Compose.
     ```bash .env
     BETTER_AUTH_URL=https://finance.yourdomain.com
     BETTER_AUTH_SECRET=your-secret-here
-    OPENAI_API_KEY=sk-...
+    OPENROUTER_API_KEY=sk-or-...
     ```
 
     Generate a secret:
@@ -68,7 +68,7 @@ The simplest way to deploy OpenFinance is with Docker Compose.
 | `DATABASE_URL` | Yes | SQLite connection string. Use `file:./data/openfinance.db` for Docker. |
 | `BETTER_AUTH_SECRET` | Yes | Secret key for session encryption. Generate with `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL` | Yes | Public URL of your instance (e.g., `https://finance.yourdomain.com`). |
-| `OPENAI_API_KEY` | Yes | OpenAI API key for AI statement processing and chat. |
+| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for AI statement processing and chat. |
 | `GOOGLE_CLIENT_ID` | No | Google OAuth client ID for "Sign in with Google". |
 | `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret. |
 
@@ -77,7 +77,7 @@ The simplest way to deploy OpenFinance is with Docker Compose.
 If you prefer to build the Docker image yourself:
 
 ```bash
-git clone https://github.com/nano3labs/openfinance.git
+git clone https://github.com/yagudaev/openfinance.git
 cd openfinance
 docker build -t openfinance .
 ```

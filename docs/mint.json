@@ -35,7 +35,7 @@
     {
       "name": "GitHub",
       "icon": "github",
-      "url": "https://github.com/nano3labs/openfinance"
+      "url": "https://github.com/yagudaev/openfinance"
     }
   ],
   "navigation": [
@@ -65,6 +65,6 @@
     }
   ],
   "footerSocials": {
-    "github": "https://github.com/nano3labs/openfinance"
+    "github": "https://github.com/yagudaev/openfinance"
   }
 }
