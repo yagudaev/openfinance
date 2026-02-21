@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { auth } from '@/lib/auth'
 import { Navbar } from '@/components/layout/navbar'
+import { Toaster } from '@/components/ui/sonner'
 
 export default async function PrivateLayout({
   children,
@@ -23,6 +24,7 @@ export default async function PrivateLayout({
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </main>
+      <Toaster richColors position="bottom-right" />
     </div>
   )
 }
