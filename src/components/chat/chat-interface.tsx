@@ -3,7 +3,9 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react'
+import { Send, Bot, Loader2, Sparkles } from 'lucide-react'
+import { useSession } from '@/lib/auth-client'
+import { UserAvatar } from '@/components/user-avatar'
 
 function MarkdownContent({ text }: { text: string }) {
   const lines = text.split('\n')
@@ -88,6 +90,7 @@ const SUGGESTIONS = [
 ]
 
 export function ChatInterface() {
+  const { data: session } = useSession()
   const [input, setInput] = useState('')
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -184,9 +187,10 @@ export function ChatInterface() {
                   })}
                 </div>
                 {message.role === 'user' && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
-                    <User className="h-4 w-4 text-gray-600" />
-                  </div>
+                  <UserAvatar
+                    name={session?.user?.name}
+                    image={session?.user?.image}
+                  />
                 )}
               </div>
             ))}
