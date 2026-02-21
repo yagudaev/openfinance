@@ -54,6 +54,7 @@ interface StatementData {
   verificationStatus: string | null
   discrepancyAmount: number | null
   isProcessed: boolean
+  fileUrl?: string
   transactions: Transaction[]
   balanceVerification: BalanceVerification | null
 }
@@ -264,48 +265,52 @@ export function StatementDetail({ statement: initial }: StatementDetailProps) {
         </div>
       </div>
 
-      {/* Balance Verification Details */}
-      {statement.balanceVerification && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-          <h3 className="text-sm font-medium text-gray-900">Balance Verification</h3>
-          <div className="mt-3 grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500">Statement Opening</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatCurrency(statement.balanceVerification.statementOpeningBalance)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Calculated Opening</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatCurrency(statement.balanceVerification.calculatedOpeningBalance)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Statement Closing</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatCurrency(statement.balanceVerification.statementClosingBalance)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Calculated Closing</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatCurrency(statement.balanceVerification.calculatedClosingBalance)}
-              </p>
-            </div>
+      {/* Balance Equation */}
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+        <h3 className="text-sm font-medium text-gray-900">Balance Equation</h3>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-lg">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Opening</p>
+            <p className="font-mono font-semibold">{formatCurrency(statement.openingBalance)}</p>
           </div>
-          {!statement.balanceVerification.isBalanced && statement.balanceVerification.discrepancyAmount && (
-            <div className="mt-3 rounded-lg bg-yellow-50 p-3">
-              <p className="text-sm text-yellow-800">
-                Discrepancy: <span className="font-semibold">{formatCurrency(statement.balanceVerification.discrepancyAmount)}</span>
-              </p>
-              {statement.balanceVerification.notes && (
-                <p className="mt-1 text-xs text-yellow-600">{statement.balanceVerification.notes}</p>
-              )}
-            </div>
-          )}
+          <span className="text-gray-400">+</span>
+          <div className="text-center">
+            <p className="text-xs text-green-600">Deposits</p>
+            <p className="font-mono font-semibold text-green-600">+{formatCurrency(totalDeposits)}</p>
+          </div>
+          <span className="text-gray-400">&minus;</span>
+          <div className="text-center">
+            <p className="text-xs text-red-600">Withdrawals</p>
+            <p className="font-mono font-semibold text-red-600">&minus;{formatCurrency(totalWithdrawals)}</p>
+          </div>
+          <span className="text-gray-400">=</span>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Calculated</p>
+            <p className="font-mono font-semibold">{formatCurrency(statement.openingBalance + totalDeposits - totalWithdrawals)}</p>
+          </div>
+          <div className="ml-2">
+            {Math.abs((statement.openingBalance + totalDeposits - totalWithdrawals) - statement.closingBalance) < 0.01 ? (
+              <CheckCircle className="h-6 w-6 text-green-500" />
+            ) : (
+              <XCircle className="h-6 w-6 text-yellow-500" />
+            )}
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Expected</p>
+            <p className="font-mono font-semibold">{formatCurrency(statement.closingBalance)}</p>
+          </div>
         </div>
-      )}
+        {statement.balanceVerification && !statement.balanceVerification.isBalanced && statement.balanceVerification.discrepancyAmount && (
+          <div className="mt-3 rounded-lg bg-yellow-50 p-3">
+            <p className="text-sm text-yellow-800">
+              Discrepancy: <span className="font-semibold">{formatCurrency(statement.balanceVerification.discrepancyAmount)}</span>
+            </p>
+            {statement.balanceVerification.notes && (
+              <p className="mt-1 text-xs text-yellow-600">{statement.balanceVerification.notes}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Transaction Summary */}
       <div className="mt-4 grid grid-cols-3 gap-4">
@@ -328,63 +333,74 @@ export function StatementDetail({ statement: initial }: StatementDetailProps) {
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="mt-6">
-        <h2 className="text-lg font-semibold text-gray-900">Transactions</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Balance
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {statement.transactions.map(tx => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-6 py-3 text-sm text-gray-500">
-                    {formatDate(tx.date, 'MMM dd, yyyy')}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-900">
-                    {tx.description}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-3 text-sm">
-                    {tx.category ? (
-                      <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                        {tx.category.replace('-', ' ')}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">&mdash;</span>
-                    )}
-                  </td>
-                  <td className={`whitespace-nowrap px-6 py-3 text-right text-sm font-medium ${
-                    tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'
-                  }`}>
-                    {tx.amount >= 0 ? '+' : ''}
-                    ${Math.abs(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-3 text-right text-sm text-gray-500">
-                    {tx.balance != null
-                      ? `$${tx.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                      : '\u2014'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* PDF Viewer + Transactions side-by-side */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* PDF Viewer */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Statement PDF</h2>
+          <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <iframe
+              src={`/api/statements/${statement.id}/pdf`}
+              className="h-[600px] w-full"
+              title="Statement PDF"
+            />
+          </div>
+        </div>
+
+        {/* Transactions */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Transactions ({statement.transactions.length})
+          </h2>
+          <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div className="max-h-[600px] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="sticky top-0 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Description
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {statement.transactions.map(tx => (
+                    <tr key={tx.id} className="hover:bg-gray-50">
+                      <td className="whitespace-nowrap px-4 py-2.5 text-sm text-gray-500">
+                        {formatDate(tx.date, 'MMM dd')}
+                      </td>
+                      <td className="max-w-[200px] truncate px-4 py-2.5 text-sm text-gray-900">
+                        {tx.description}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-sm">
+                        {tx.category ? (
+                          <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                            {tx.category.replace('-', ' ')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">&mdash;</span>
+                        )}
+                      </td>
+                      <td className={`whitespace-nowrap px-4 py-2.5 text-right text-sm font-medium ${
+                        tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'
+                      }`}>
+                        {tx.amount >= 0 ? '+' : ''}
+                        ${Math.abs(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
