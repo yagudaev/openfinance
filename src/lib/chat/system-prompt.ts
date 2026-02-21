@@ -1,4 +1,11 @@
-export function buildSystemPrompt(userContext?: string | null, isNewUser?: boolean): string {
+interface SystemPromptOptions {
+  userContext?: string | null
+  memories?: string | null
+  isNewUser?: boolean
+}
+
+export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
+  const { userContext, memories, isNewUser } = options
   const today = new Date().toISOString().split('T')[0]
   const basePrompt = `You are a knowledgeable financial advisor embedded in OpenFinance, a personal and business bookkeeping application. You have access to the user's complete transaction history and account information.
 
@@ -24,6 +31,16 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **calculate_rrsp**: Get RRSP contribution room and estimated tax refund for an income level
 - **calculate_tfsa**: Get TFSA annual contribution limit info
 - **evaluate_expression**: Safely evaluate mathematical expressions for custom calculations
+- **save_memory**: Save important facts about the user for future conversations (financial details, goals, preferences, tax info)
+- **recall_memory**: Retrieve saved memories about the user, optionally filtered by category
+- **delete_memory**: Delete a specific saved memory when information is outdated or user asks to forget
+
+## Memory Guidelines
+- When the user shares important financial facts (income, business type, goals, tax situation, risk tolerance, family situation, etc.), proactively save them using save_memory
+- Use clear, descriptive keys like "annual_income", "business_type", "tax_filing_status", "risk_tolerance"
+- Update existing memories when the user provides new information (same key will overwrite)
+- Do NOT save transient or trivial information — focus on facts that would be useful across conversations
+- You do NOT need to call recall_memory during conversation — relevant memories are already loaded into your context below
 
 ## Guidelines
 1. Always use tools to find specific data — don't guess or make up numbers
@@ -70,5 +87,9 @@ This is a new user who just signed up. Start a friendly onboarding conversation 
     ? `\n\n## User Context\nThe user has provided the following context about themselves and their financial situation:\n${userContext}`
     : ''
 
-  return basePrompt + onboardingSection + contextSection
+  const memoriesSection = memories
+    ? `\n\n## Remembered Facts About This User\nThe following facts were saved from previous conversations. Use them to provide personalized advice:\n\n${memories}`
+    : ''
+
+  return basePrompt + onboardingSection + contextSection + memoriesSection
 }

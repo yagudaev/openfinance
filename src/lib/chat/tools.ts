@@ -10,6 +10,7 @@ import {
   getRRSPInfo,
   getTFSAInfo,
 } from '@/lib/chat/finance-tools'
+import { saveMemory, recallMemories, deleteMemory, MEMORY_CATEGORIES, type MemoryCategory } from '@/lib/chat/memory'
 
 export function createChatTools(userId: string) {
   return {
@@ -364,6 +365,99 @@ export function createChatTools(userId: string) {
       }),
       execute: async ({ expression }) => {
         return safeEvaluate(expression)
+      },
+    }),
+
+    save_memory: tool({
+      description:
+        'Save an important fact about the user for future conversations. Use this proactively when the user shares financial details, goals, preferences, or personal context.',
+      inputSchema: z.object({
+        key: z.string().describe('Short identifier for this memory (e.g. "annual_income", "filing_status")'),
+        value: z.string().describe('The fact to remember (e.g. "User earns $120k/year as a freelance developer")'),
+        category: z.enum([
+          'financial_situation',
+          'goals',
+          'preferences',
+          'tax_info',
+          'business_info',
+          'general',
+        ]).describe('Category for organizing this memory'),
+      }),
+      execute: async ({ key, value, category }) => {
+        try {
+          await saveMemory(userId, key, value, category as MemoryCategory)
+          return {
+            success: true,
+            message: `Remembered: ${key}`,
+            category: MEMORY_CATEGORIES[category as MemoryCategory],
+          }
+        } catch (error) {
+          console.error('save_memory error:', error)
+          return { error: 'Failed to save memory', message: String(error) }
+        }
+      },
+    }),
+
+    recall_memory: tool({
+      description:
+        'Retrieve saved memories about the user. Call with no parameters to get all memories, or filter by category.',
+      inputSchema: z.object({
+        category: z.enum([
+          'financial_situation',
+          'goals',
+          'preferences',
+          'tax_info',
+          'business_info',
+          'general',
+        ]).optional().describe('Filter by category. Omit to get all memories.'),
+      }),
+      execute: async ({ category }) => {
+        try {
+          const memories = await recallMemories(userId, category as MemoryCategory | undefined)
+
+          if (memories.length === 0) {
+            return {
+              count: 0,
+              message: category
+                ? `No memories found in category "${MEMORY_CATEGORIES[category as MemoryCategory]}"`
+                : 'No memories saved yet',
+            }
+          }
+
+          return {
+            count: memories.length,
+            memories: memories.map(m => ({
+              key: m.key,
+              value: m.value,
+              category: m.category,
+              categoryLabel: MEMORY_CATEGORIES[m.category as MemoryCategory] ?? m.category,
+              lastUpdated: m.updatedAt.toISOString().split('T')[0],
+            })),
+          }
+        } catch (error) {
+          console.error('recall_memory error:', error)
+          return { error: 'Failed to recall memories', message: String(error) }
+        }
+      },
+    }),
+
+    delete_memory: tool({
+      description:
+        'Delete a specific saved memory by its key. Use this when the user asks to forget something or when information is no longer accurate.',
+      inputSchema: z.object({
+        key: z.string().describe('The key of the memory to delete'),
+      }),
+      execute: async ({ key }) => {
+        try {
+          const result = await deleteMemory(userId, key)
+          if (result.count === 0) {
+            return { success: false, message: `No memory found with key "${key}"` }
+          }
+          return { success: true, message: `Forgot: ${key}` }
+        } catch (error) {
+          console.error('delete_memory error:', error)
+          return { error: 'Failed to delete memory', message: String(error) }
+        }
       },
     }),
   }

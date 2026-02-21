@@ -27,6 +27,7 @@ model User {
   statements   BankStatement[]
   transactions Transaction[]
   settings     UserSettings?
+  memories     UserMemory[]
   processingJobs ProcessingJob[]
   chatThreads  ChatThread[]
 }
@@ -91,6 +92,20 @@ model UserSettings {
   aiModel            String   @default("openai/gpt-4o-mini")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model UserMemory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId, category])
 }
 
 model BankAccount {
