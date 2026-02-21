@@ -21,12 +21,14 @@ import {
   Upload,
   Wrench,
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   Brain,
   Trash2,
   BookOpen,
   PanelLeftOpen,
   Bug,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
@@ -145,6 +147,158 @@ function formatToolData(data: unknown): string {
   }
 }
 
+function formatToolSummary(toolName: string | undefined, output: unknown): string | null {
+  if (!output || typeof output !== 'object') return null
+  const data = output as Record<string, unknown>
+
+  if (data.error) return null
+
+  switch (toolName) {
+    case 'process_statements': {
+      const processed = data.processed as number | undefined
+      const totalTransactions = data.totalTransactions as number | undefined
+      const failed = data.failed as number | undefined
+      const parts: string[] = []
+      if (processed !== undefined) {
+        parts.push(`Processed ${processed} statement${processed === 1 ? '' : 's'}`)
+      }
+      if (totalTransactions !== undefined) {
+        parts.push(`${totalTransactions} transaction${totalTransactions === 1 ? '' : 's'}`)
+      }
+      if (failed && failed > 0) {
+        parts.push(`${failed} failed`)
+      }
+      return parts.length > 0 ? parts.join(', ') : null
+    }
+    case 'search_transactions': {
+      const count = data.count as number | undefined
+      return count !== undefined ? `Found ${count} transaction${count === 1 ? '' : 's'}` : null
+    }
+    case 'get_account_summary': {
+      const totalAccounts = data.totalAccounts as number | undefined
+      return totalAccounts !== undefined ? `${totalAccounts} account${totalAccounts === 1 ? '' : 's'} found` : 'Retrieved account summary'
+    }
+    case 'get_cashflow':
+      return 'Calculated cashflow'
+    case 'get_category_breakdown': {
+      const totalCategories = data.totalCategories as number | undefined
+      return totalCategories !== undefined ? `${totalCategories} categor${totalCategories === 1 ? 'y' : 'ies'} analyzed` : 'Analyzed categories'
+    }
+    case 'get_settings':
+      return 'Retrieved settings'
+    case 'update_settings': {
+      const updatedFields = data.updatedFields as string[] | undefined
+      return updatedFields ? `Updated ${updatedFields.join(', ')}` : 'Settings updated'
+    }
+    case 'save_memory': {
+      const msg = data.message as string | undefined
+      return msg || 'Saved to memory'
+    }
+    case 'recall_memory': {
+      const count = data.count as number | undefined
+      return count !== undefined ? `${count} memor${count === 1 ? 'y' : 'ies'} found` : null
+    }
+    case 'search_memory': {
+      const count = data.count as number | undefined
+      return count !== undefined ? `Found ${count} matching memor${count === 1 ? 'y' : 'ies'}` : null
+    }
+    case 'delete_memory': {
+      const msg = data.message as string | undefined
+      return msg || 'Memory deleted'
+    }
+    case 'calculate_tax':
+      return 'Tax calculation complete'
+    case 'calculate_compound_growth':
+      return 'Growth projection complete'
+    case 'calculate_rrsp':
+      return 'RRSP calculation complete'
+    case 'calculate_tfsa':
+      return 'TFSA info retrieved'
+    case 'evaluate_expression':
+      return 'Calculation complete'
+    default:
+      return 'Completed'
+  }
+}
+
+function formatToolResultDetail(toolName: string | undefined, output: unknown): React.ReactNode {
+  if (!output || typeof output !== 'object') return null
+  const data = output as Record<string, unknown>
+
+  if (data.error) {
+    return (
+      <div className="flex items-start gap-1.5 text-xs text-red-600">
+        <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
+        <span>{String(data.error)}</span>
+      </div>
+    )
+  }
+
+  switch (toolName) {
+    case 'process_statements': {
+      const results = data.results as Array<{
+        fileName: string
+        success: boolean
+        transactionCount?: number
+        categorized?: number
+        isBalanced?: boolean
+        bankName?: string
+        periodStart?: string
+        periodEnd?: string
+        error?: string
+      }> | undefined
+      if (!results || results.length === 0) return null
+      return (
+        <div className="space-y-1 text-xs">
+          {results.map((r, i) => (
+            <div key={i} className="flex items-start gap-1.5">
+              {r.success ? (
+                <>
+                  <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-green-500" />
+                  <span className="text-gray-700">
+                    <span className="font-medium">{r.bankName || r.fileName}</span>
+                    {' — '}
+                    {r.transactionCount} transaction{r.transactionCount === 1 ? '' : 's'}
+                    {r.categorized !== undefined && r.categorized > 0 && ` (${r.categorized} categorized)`}
+                    {r.isBalanced !== undefined && (r.isBalanced ? ', balanced' : ', unbalanced')}
+                    {r.periodStart && r.periodEnd && (
+                      <span className="text-gray-400"> ({r.periodStart} to {r.periodEnd})</span>
+                    )}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-500" />
+                  <span className="text-red-600">
+                    <span className="font-medium">{r.fileName}</span>
+                    {' — '}
+                    {r.error || 'Unknown error'}
+                  </span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+    case 'search_transactions': {
+      const count = data.count as number | undefined
+      const summary = data.summary as { totalCredits?: string; totalDebits?: string; netAmount?: string } | undefined
+      if (count === 0) return <span className="text-xs text-gray-500">No transactions found</span>
+      if (!summary) return null
+      return (
+        <div className="text-xs text-gray-600">
+          {summary.totalCredits && <span>Credits: {summary.totalCredits}</span>}
+          {summary.totalDebits && <span> | Debits: {summary.totalDebits}</span>}
+          {summary.netAmount && <span> | Net: {summary.netAmount}</span>}
+        </div>
+      )
+    }
+    default:
+      return null
+  }
+}
+
 interface ToolCallDisplayProps {
   toolName?: string
   state: string
@@ -153,52 +307,73 @@ interface ToolCallDisplayProps {
 }
 
 function ToolCallDisplay({ toolName, state, input, output }: ToolCallDisplayProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [debugExpanded, setDebugExpanded] = useState(false)
   const { label, icon: Icon } = getToolDisplay(toolName)
   const isDone = state === 'output-available'
   const isError = state === 'output-error'
-  const hasDetails = (input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0) || output !== undefined
 
-  function handleToggle() {
-    if (hasDetails) setExpanded(prev => !prev)
-  }
+  const summary = (isDone || isError) ? formatToolSummary(toolName, output) : null
+  const resultDetail = (isDone || isError) ? formatToolResultDetail(toolName, output) : null
+  const hasDebugData = (input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0) || output !== undefined
 
   return (
     <div className="my-1 overflow-hidden rounded-md border border-gray-200 bg-white text-xs">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-gray-500 ${hasDetails ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'}`}
-      >
+      {/* Header: tool label + status */}
+      <div className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-500">
         <Icon className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-        <span className="font-medium text-gray-700">{label}</span>
-        {isDone ? (
-          <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
-        ) : isError ? (
-          <X className="ml-auto h-3.5 w-3.5 shrink-0 text-red-500" />
-        ) : (
-          <Loader2 className="ml-auto h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />
-        )}
-        {hasDetails && (
-          <ChevronDown className={`h-3 w-3 shrink-0 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-        )}
-      </button>
-      {expanded && hasDetails && (
-        <div className="border-t border-gray-100 px-3 py-2 text-[11px]">
-          {input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0 && (
-            <div className="mb-1.5">
-              <span className="font-semibold text-gray-500">Args</span>
-              <pre className="mt-0.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
-                {formatToolData(input)}
-              </pre>
-            </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-gray-700">{label}</span>
+            {isDone ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+            ) : isError ? (
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+            ) : (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />
+            )}
+          </div>
+          {summary && (
+            <span className="mt-0.5 text-[11px] text-gray-500">{summary}</span>
           )}
-          {output !== undefined && (
-            <div>
-              <span className="font-semibold text-gray-500">Result</span>
-              <pre className="mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
-                {formatToolData(output)}
-              </pre>
+        </div>
+      </div>
+
+      {/* Friendly result detail (auto-shown when complete, no toggle needed) */}
+      {resultDetail && (
+        <div className="border-t border-gray-100 px-3 py-2">
+          {resultDetail}
+        </div>
+      )}
+
+      {/* Debug details toggle */}
+      {hasDebugData && (isDone || isError) && (
+        <div className="border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setDebugExpanded(prev => !prev)}
+            className="flex w-full items-center gap-1 px-3 py-1.5 text-[11px] text-gray-400 hover:text-gray-500"
+          >
+            <ChevronRight className={`h-3 w-3 shrink-0 transition-transform ${debugExpanded ? 'rotate-90' : ''}`} />
+            <span>Debug details</span>
+          </button>
+          {debugExpanded && (
+            <div className="px-3 pb-2 text-[11px]">
+              {input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0 && (
+                <div className="mb-1.5">
+                  <span className="font-semibold text-gray-500">Args</span>
+                  <pre className="mt-0.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
+                    {formatToolData(input)}
+                  </pre>
+                </div>
+              )}
+              {output !== undefined && (
+                <div>
+                  <span className="font-semibold text-gray-500">Result</span>
+                  <pre className="mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
+                    {formatToolData(output)}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>
