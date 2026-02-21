@@ -3,8 +3,11 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { extractText } from 'unpdf'
 import { processStatement } from '@/lib/services/statement-processor'
+
+// pdf-parse v1 has no proper ESM/TS types — use require
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse')
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -24,9 +27,9 @@ export async function POST(request: NextRequest) {
     const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
     const pdfBuffer = await readFile(fullPath)
 
-    // Extract text from PDF (returns string[] per page)
-    const { text: pages } = await extractText(pdfBuffer)
-    const pdfText = pages.join('\n\n')
+    // Extract text from PDF
+    const pdfData = await pdfParse(pdfBuffer)
+    const pdfText: string = pdfData.text
 
     if (!pdfText || pdfText.trim().length === 0) {
       return NextResponse.json(
