@@ -1,5 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
+import { readFile, stat } from 'fs/promises'
+import { join } from 'path'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 
@@ -11,6 +13,11 @@ import {
   getTFSAInfo,
 } from '@/lib/chat/finance-tools'
 import { saveMemory, recallMemories, searchMemories, deleteMemory, MEMORY_CATEGORIES, type MemoryCategory } from '@/lib/chat/memory'
+import { processStatement } from '@/lib/services/statement-processor'
+import { categorizeTransactions } from '@/lib/services/transaction-categorizer'
+
+// pdf-parse v1 has no proper ESM/TS types — use require
+const pdfParse = require('pdf-parse')
 
 export function createChatTools(userId: string) {
   return {
@@ -491,6 +498,122 @@ export function createChatTools(userId: string) {
         } catch (error) {
           console.error('delete_memory error:', error)
           return { error: 'Failed to delete memory', message: String(error) }
+        }
+      },
+    }),
+
+    process_statements: tool({
+      description:
+        'Process one or more uploaded bank statement PDF files. Extracts transactions from the PDFs using AI, saves them to the database, and categorizes them. Use this when the user uploads PDF files and asks to process their bank statements, import transactions, or mentions uploaded statement files. The filePaths should come from [Attached file: ...] references in the user message.',
+      inputSchema: z.object({
+        filePaths: z.array(z.string()).describe(
+          'Array of file paths relative to data/uploads/ (e.g. "attachments/userId/timestamp_file.pdf"). These come from the [Attached file: name (path)] references in the user message.',
+        ),
+      }),
+      execute: async ({ filePaths }) => {
+        const results: Array<{
+          fileName: string
+          success: boolean
+          transactionCount?: number
+          categorized?: number
+          isBalanced?: boolean
+          bankName?: string
+          periodStart?: string
+          periodEnd?: string
+          error?: string
+        }> = []
+
+        for (const filePath of filePaths) {
+          const fileName = filePath.split('/').pop() || filePath
+
+          try {
+            // Read PDF from disk
+            const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
+            const pdfBuffer = await readFile(fullPath)
+            const fileStats = await stat(fullPath)
+
+            // Extract text from PDF
+            const pdfData = await pdfParse(pdfBuffer)
+            const pdfText: string = pdfData.text
+
+            if (!pdfText || pdfText.trim().length === 0) {
+              results.push({
+                fileName,
+                success: false,
+                error: 'Could not extract text from PDF. The file may be scanned/image-based.',
+              })
+              continue
+            }
+
+            // Process the statement
+            const result = await processStatement(
+              pdfText,
+              fileName,
+              filePath,
+              fileStats.size,
+              userId,
+            )
+
+            // Categorize the extracted transactions
+            let categorizedCount = 0
+            if (result.statement?.id && result.transactionCount > 0) {
+              const transactions = await prisma.transaction.findMany({
+                where: { statementId: result.statement.id, userId },
+                select: { id: true },
+              })
+
+              if (transactions.length > 0) {
+                const catResult = await categorizeTransactions(
+                  transactions.map(t => t.id),
+                  userId,
+                )
+                categorizedCount = catResult.categorized
+              }
+            }
+
+            // Fetch statement details for the response
+            const statement = result.statement
+              ? await prisma.bankStatement.findUnique({
+                  where: { id: result.statement.id },
+                  select: {
+                    bankName: true,
+                    periodStart: true,
+                    periodEnd: true,
+                  },
+                })
+              : null
+
+            results.push({
+              fileName,
+              success: true,
+              transactionCount: result.transactionCount,
+              categorized: categorizedCount,
+              isBalanced: result.isBalanced,
+              bankName: statement?.bankName || undefined,
+              periodStart: statement?.periodStart?.toISOString().split('T')[0],
+              periodEnd: statement?.periodEnd?.toISOString().split('T')[0],
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            results.push({
+              fileName,
+              success: false,
+              error: message,
+            })
+          }
+        }
+
+        const successCount = results.filter(r => r.success).length
+        const totalTransactions = results.reduce(
+          (sum, r) => sum + (r.transactionCount || 0),
+          0,
+        )
+
+        return {
+          processed: successCount,
+          failed: results.length - successCount,
+          totalTransactions,
+          results,
         }
       },
     }),
