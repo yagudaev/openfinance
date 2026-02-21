@@ -25,7 +25,7 @@ test.describe('Auth Pages', () => {
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
     await expect(page.getByLabel('Repeat Password')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign up' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign up', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Login' })).toBeVisible()
   })
 
@@ -47,7 +47,7 @@ test.describe('Auth Pages', () => {
     await page.getByLabel('Email').fill('test@test.com')
     await page.getByLabel('Password', { exact: true }).fill('password1')
     await page.getByLabel('Repeat Password').fill('password2')
-    await page.getByRole('button', { name: 'Sign up' }).click()
+    await page.getByRole('button', { name: 'Sign up', exact: true }).click()
 
     await expect(page.getByText('Passwords do not match')).toBeVisible()
   })
@@ -66,7 +66,7 @@ test.describe('Auth Flow', () => {
     await page.getByLabel('Email').fill(TEST_USER.email)
     await page.getByLabel('Password', { exact: true }).fill(TEST_USER.password)
     await page.getByLabel('Repeat Password').fill(TEST_USER.password)
-    await page.getByRole('button', { name: 'Sign up' }).click()
+    await page.getByRole('button', { name: 'Sign up', exact: true }).click()
 
     // Should redirect to dashboard after sign up
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })

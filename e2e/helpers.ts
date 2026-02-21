@@ -24,7 +24,7 @@ export async function ensureLoggedIn(page: Page) {
       await page.getByLabel('Email').fill(AUTH_EMAIL)
       await page.getByLabel('Password', { exact: true }).fill(AUTH_PASSWORD)
       await page.getByLabel('Repeat Password').fill(AUTH_PASSWORD)
-      await page.getByRole('button', { name: 'Sign up' }).click()
+      await page.getByRole('button', { name: 'Sign up', exact: true }).click()
     }
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })

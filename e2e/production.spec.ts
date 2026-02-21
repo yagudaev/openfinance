@@ -6,10 +6,10 @@ test.describe('Production Deployment', () => {
   test('app loads with SSL at openfinance.to', async ({ page }) => {
     await page.goto(PROD_URL)
 
-    // Should redirect to login (auth middleware working)
-    await expect(page).toHaveURL(new RegExp(`${PROD_URL}/auth/login`))
-    await expect(page.getByText('Login', { exact: true }).first()).toBeVisible()
-    await expect(page.getByLabel('Email')).toBeVisible()
+    // Should show marketing landing page for unauthenticated users
+    await expect(page).toHaveURL(PROD_URL + '/')
+    await expect(page.getByRole('heading', { name: 'Engineer your financial future' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
   })
 
   test('sign up page accessible in production', async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe('Production Deployment', () => {
     await page.getByLabel('Email').fill(prodEmail)
     await page.getByLabel('Password', { exact: true }).fill(prodPassword)
     await page.getByLabel('Repeat Password').fill(prodPassword)
-    await page.getByRole('button', { name: 'Sign up' }).click()
+    await page.getByRole('button', { name: 'Sign up', exact: true }).click()
 
     // Should arrive at dashboard
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
