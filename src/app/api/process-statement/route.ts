@@ -6,7 +6,6 @@ import { join } from 'path'
 import { processStatement } from '@/lib/services/statement-processor'
 
 // pdf-parse v1 has no proper ESM/TS types — use require
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse')
 
 export async function POST(request: NextRequest) {

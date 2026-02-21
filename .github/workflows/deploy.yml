@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Coolify
+    runs-on: ubuntu-latest
+    needs: []
+    # Only deploy if CI workflow succeeds (GitHub branch protection handles this)
+    steps:
+      - name: Deploy to Coolify
+        uses: christophecvb/deploy-coolify-action@v1
+        with:
+          token: ${{ secrets.COOLIFY_API_TOKEN }}
+          domain: ${{ secrets.COOLIFY_DOMAIN }}
+          uuid: ${{ secrets.COOLIFY_APP_UUID }}
+          waitForDeploy: true
+          timeout: 600
