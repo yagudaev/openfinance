@@ -6,12 +6,12 @@ Apply these rules in the Hetzner Cloud Console under **Firewalls**.
 
 | Protocol | Port | Source | Description |
 |----------|------|--------|-------------|
-| TCP | 22 | 100.64.0.0/10 | SSH via Tailscale only |
+| TCP | 22 | 0.0.0.0/0 | SSH (secured by Tailscale at OS level) |
 | TCP | 80 | 0.0.0.0/0 | HTTP (redirects to HTTPS) |
 | TCP | 443 | 0.0.0.0/0 | HTTPS |
-| TCP | 6001 | 100.64.0.0/10 | Coolify WebSocket (real-time) via Tailscale only |
-| TCP | 6002 | 100.64.0.0/10 | Coolify Soketi (WebSocket) via Tailscale only |
-| TCP | 8000 | 100.64.0.0/10 | Coolify dashboard via Tailscale only |
+| TCP | 6001 | 0.0.0.0/0 | Coolify WebSocket (real-time) |
+| TCP | 6002 | 0.0.0.0/0 | Coolify Soketi (WebSocket) |
+| TCP | 8000 | 0.0.0.0/0 | Coolify dashboard |
 
 ## Default Policy
 
@@ -19,7 +19,7 @@ Apply these rules in the Hetzner Cloud Console under **Firewalls**.
 
 ## Notes
 
-- Port 22 is restricted to Tailscale IPs (100.64.0.0/10) so SSH is only accessible through the Tailscale network
-- Port 8000 (Coolify dashboard) is also Tailscale-only for security
+- **Hetzner cloud firewall limitation**: Hetzner's firewall operates at the infrastructure level and only sees public source IPs. It cannot filter by Tailscale overlay IPs (100.64.0.0/10) because Tailscale traffic arrives encapsulated over the public internet. Restricting ports to Tailscale IPs at the Hetzner firewall level silently drops all Tailscale traffic.
+- Because of this, all ports must be open to 0.0.0.0/0 in the Hetzner firewall. Access control for SSH, Coolify dashboard, and WebSocket ports is enforced at the OS level by Tailscale (only devices on the tailnet can connect).
 - Ports 80/443 are open to the world for the web app
 - Apply the firewall to the server in Hetzner Cloud Console > Servers > openfinance > Networking > Firewalls
