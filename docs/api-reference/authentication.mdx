@@ -1,0 +1,127 @@
+---
+title: Authentication
+description: "How authentication and sessions work in OpenFinance."
+---
+
+# Authentication
+
+OpenFinance uses [BetterAuth](https://www.better-auth.com/) for authentication. It supports email/password sign-up and optional Google OAuth.
+
+## Auth Endpoints
+
+BetterAuth exposes its endpoints under `/api/auth/`. The main endpoints are:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/sign-up/email` | POST | Create a new account with email and password |
+| `/api/auth/sign-in/email` | POST | Sign in with email and password |
+| `/api/auth/sign-out` | POST | Sign out and invalidate the session |
+| `/api/auth/get-session` | GET | Get the current session and user info |
+| `/api/auth/sign-in/social` | POST | Initiate Google OAuth sign-in (if configured) |
+
+## Session Management
+
+When a user signs in, BetterAuth creates a session stored in the database and sets a session cookie in the browser.
+
+Session configuration:
+
+| Setting | Value |
+|---------|-------|
+| **Session duration** | 7 days |
+| **Session refresh** | Every 24 hours |
+| **Cookie caching** | Enabled (5 minute TTL) |
+
+The session token is stored in the `better-auth.session_token` cookie. All authenticated API requests must include this cookie.
+
+## Sign Up
+
+Create a new account by sending a POST request:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/sign-up/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "your-password",
+    "name": "Your Name"
+  }'
+```
+
+Password requirements:
+- Minimum 8 characters
+- Maximum 128 characters
+
+## Sign In
+
+Authenticate with email and password:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/sign-in/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "your-password"
+  }'
+```
+
+The response sets a session cookie that is used for subsequent authenticated requests.
+
+## Google OAuth (Optional)
+
+To enable "Sign in with Google", set the following environment variables:
+
+```bash
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+```
+
+When configured, a Google sign-in button appears on the login page. Users can then sign in with their Google account.
+
+## Client-Side Usage
+
+The app uses the BetterAuth client SDK for authentication in React components:
+
+```typescript
+import { authClient } from '@/lib/auth-client'
+
+// Sign up
+await authClient.signUp.email({
+  email: 'user@example.com',
+  password: 'your-password',
+  name: 'Your Name',
+})
+
+// Sign in
+await authClient.signIn.email({
+  email: 'user@example.com',
+  password: 'your-password',
+})
+
+// Sign out
+await authClient.signOut()
+
+// Get current session
+const session = await authClient.getSession()
+```
+
+## Server-Side Usage
+
+In server components and API routes, use the auth object to check the session:
+
+```typescript
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
+
+const session = await auth.api.getSession({
+  headers: await headers(),
+})
+
+if (!session) {
+  // User is not authenticated
+  return new Response('Unauthorized', { status: 401 })
+}
+
+// Access user data
+const userId = session.user.id
+const userEmail = session.user.email
+```

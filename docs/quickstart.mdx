@@ -1,0 +1,114 @@
+---
+title: Quickstart
+description: "Get OpenFinance running locally for development."
+---
+
+# Quickstart
+
+Get OpenFinance up and running on your local machine in under 5 minutes.
+
+## Prerequisites
+
+- **Node.js 20+** ([download](https://nodejs.org/))
+- **Yarn 4.0.0** (included via `corepack`)
+- **OpenAI API key** for AI features ([get one](https://platform.openai.com/api-keys))
+
+## Setup
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/nano3labs/openfinance.git
+    cd openfinance
+    ```
+  </Step>
+
+  <Step title="Enable Yarn via Corepack">
+    ```bash
+    corepack enable
+    corepack prepare yarn@4.0.0 --activate
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    yarn install
+    ```
+  </Step>
+
+  <Step title="Set up environment variables">
+    Create a `.env` file in the project root:
+
+    ```bash .env
+    # Database (SQLite, stored locally)
+    DATABASE_URL="file:./prisma/data/openfinance.db"
+
+    # Authentication
+    BETTER_AUTH_SECRET="generate-a-random-secret-here"
+    BETTER_AUTH_URL="http://localhost:3000"
+
+    # AI (required for statement processing and chat)
+    OPENAI_API_KEY="sk-..."
+
+    # Optional: Google OAuth
+    # GOOGLE_CLIENT_ID="..."
+    # GOOGLE_CLIENT_SECRET="..."
+    ```
+
+    Generate a secret for `BETTER_AUTH_SECRET`:
+    ```bash
+    openssl rand -base64 32
+    ```
+  </Step>
+
+  <Step title="Initialize the database">
+    ```bash
+    yarn db:generate
+    yarn db:push
+    ```
+
+    This creates the SQLite database at `prisma/data/openfinance.db` and sets up all tables.
+  </Step>
+
+  <Step title="Start the dev server">
+    ```bash
+    yarn dev
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
+  </Step>
+</Steps>
+
+## First Steps
+
+Once the app is running:
+
+1. **Create an account** -- sign up with your email and password on the login page
+2. **Configure settings** -- go to Settings to set your fiscal year, timezone, and AI model
+3. **Upload a bank statement** -- navigate to Statements and upload a PDF bank statement
+4. **Wait for processing** -- the AI will extract transactions and verify balances automatically
+5. **Explore your data** -- view transactions, check the dashboard, or chat with the AI advisor
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `yarn dev` | Start the dev server with Turbopack |
+| `yarn build` | Create a production build |
+| `yarn lint` | Run ESLint |
+| `yarn db:push` | Push Prisma schema changes to the database |
+| `yarn db:studio` | Open Prisma Studio (database browser) |
+| `yarn db:generate` | Regenerate the Prisma client |
+| `yarn db:migrate` | Run database migrations |
+| `yarn test` | Run Playwright end-to-end tests |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bank Statements" icon="file-pdf" href="/features/bank-statements">
+    Learn how to upload and process bank statement PDFs.
+  </Card>
+  <Card title="Self-Hosting" icon="server" href="/self-hosting">
+    Deploy to your own server with Docker.
+  </Card>
+</CardGroup>
