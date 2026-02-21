@@ -16,18 +16,18 @@ const chartConfig = {
 
 export function CashflowChart({ data }: CashflowChartProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0, containerWidth: 300 })
   const containerRef = useRef<HTMLDivElement>(null)
   const selectedItem = selectedIndex !== null ? data[selectedIndex] : null
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function handleBarMouseEnter(data: any, index: number, e: React.MouseEvent) {
+  function handleBarMouseEnter(_data: any, index: number, e: React.MouseEvent) {
     setSelectedIndex(index)
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect()
       setTooltipPos({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
+        containerWidth: containerRef.current.offsetWidth,
       })
     }
   }
@@ -80,7 +80,7 @@ export function CashflowChart({ data }: CashflowChartProps) {
           style={{
             left: Math.min(
               tooltipPos.x + 10,
-              (containerRef.current?.offsetWidth || 300) - 220,
+              tooltipPos.containerWidth - 220,
             ),
             top: Math.max(tooltipPos.y - 100, 10),
           }}

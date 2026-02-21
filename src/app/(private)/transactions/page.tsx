@@ -28,7 +28,6 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const sortOrder = params.order === 'asc' ? 'asc' as const : 'desc' as const
 
   // Build where clause
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { userId: session.user.id }
 
   if (search) {

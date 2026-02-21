@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: 'file:./data/openfinance.db'
+  BETTER_AUTH_SECRET: 'ci-test-secret-not-for-production'
+  BETTER_AUTH_URL: 'http://localhost:3000'
+  OPENAI_API_KEY: 'sk-fake-ci-key'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable && corepack prepare yarn@4.0.0 --activate
+
+      - name: Get Yarn cache directory
+        id: yarn-cache
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Generate Prisma client
+        run: yarn db:generate
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+  test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable && corepack prepare yarn@4.0.0 --activate
+
+      - name: Get Yarn cache directory
+        id: yarn-cache
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Generate Prisma client
+        run: yarn db:generate
+
+      - name: Initialize database
+        run: |
+          mkdir -p prisma/data
+          yarn db:push
+
+      - name: Build application
+        run: yarn build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: yarn test
+        env:
+          CI: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
