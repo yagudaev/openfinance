@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
+import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 
 export const maxDuration = 60
 
@@ -43,7 +44,12 @@ export async function POST(request: Request) {
   const modelId = settings?.aiModel ?? 'openrouter/cerebras/auto'
 
   const isNewUser = !settings?.aiContext
-  const systemPrompt = buildSystemPrompt(settings?.aiContext, isNewUser)
+  const memories = await loadMemoriesForPrompt(session.user.id)
+  const systemPrompt = buildSystemPrompt({
+    userContext: settings?.aiContext,
+    memories,
+    isNewUser,
+  })
   const tools = createChatTools(session.user.id)
 
   // Save user message to DB if we have a thread
