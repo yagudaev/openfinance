@@ -17,8 +17,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
 
-  if (file.type !== 'application/pdf') {
-    return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 })
+  const ALLOWED_TYPES = new Set([
+    'application/pdf',
+    'text/markdown',
+    'text/x-markdown',
+    'text/csv',
+    'text/plain',
+    'image/jpeg',
+    'image/png',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ])
+
+  // Some systems report .md files with a generic or empty MIME type — fall back to extension check
+  const extension = file.name.split('.').pop()?.toLowerCase()
+  const ALLOWED_EXTENSIONS = new Set(['pdf', 'md', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'])
+
+  if (!ALLOWED_TYPES.has(file.type) && (!extension || !ALLOWED_EXTENSIONS.has(extension))) {
+    return NextResponse.json(
+      { error: 'Unsupported file type. Allowed: PDF, Markdown, CSV, Text, Images (JPG/PNG), Excel (XLSX/XLS)' },
+      { status: 400 },
+    )
   }
 
   const maxSize = 10 * 1024 * 1024
@@ -28,9 +47,9 @@ export async function POST(request: NextRequest) {
 
   const timestamp = Date.now()
   const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-  const relPath = `statements/${session.user.id}/${timestamp}_${sanitizedFileName}`
+  const relPath = `attachments/${session.user.id}/${timestamp}_${sanitizedFileName}`
 
-  const uploadDir = join(process.cwd(), 'data', 'uploads', 'statements', session.user.id)
+  const uploadDir = join(process.cwd(), 'data', 'uploads', 'attachments', session.user.id)
   await mkdir(uploadDir, { recursive: true })
 
   const fullPath = join(process.cwd(), 'data', 'uploads', relPath)

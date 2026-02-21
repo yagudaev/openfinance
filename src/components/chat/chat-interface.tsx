@@ -538,7 +538,7 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept=".pdf,.md,.csv,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
           />
