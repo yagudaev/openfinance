@@ -1,9 +1,9 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, Loader2, Sparkles } from 'lucide-react'
+import { DefaultChatTransport, UIMessage } from 'ai'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { Send, Bot, Loader2, Sparkles, Plus } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
 
@@ -89,11 +89,34 @@ const SUGGESTIONS = [
   'What is my account balance?',
 ]
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  threadId: string
+  initialMessages?: UIMessage[]
+}
+
+export function ChatInterface({ threadId: initialThreadId, initialMessages = [] }: ChatInterfaceProps) {
   const { data: session } = useSession()
+  const [threadId, setThreadId] = useState(initialThreadId)
   const [input, setInput] = useState('')
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+  const threadIdRef = useRef(threadId)
+
+  useEffect(() => {
+    threadIdRef.current = threadId
+  }, [threadId])
+
+  /* eslint-disable react-hooks/refs -- body is a lazy callback invoked at request time, not during render */
+  const transport = useMemo(
+    () => new DefaultChatTransport({
+      api: '/api/chat',
+      body: () => ({ threadId: threadIdRef.current }),
+    }),
+    [],
+  )
+  /* eslint-enable react-hooks/refs */
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport,
+    messages: initialMessages,
   })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -115,8 +138,29 @@ export function ChatInterface() {
     sendMessage({ text })
   }
 
+  async function handleNewThread() {
+    const res = await fetch('/api/chat/threads', { method: 'POST' })
+    const data = await res.json()
+    setThreadId(data.threadId)
+    setMessages([])
+  }
+
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
+      {/* Header with new conversation button */}
+      {messages.length > 0 && (
+        <div className="flex items-center justify-end border-b border-gray-200 px-4 py-2">
+          <button
+            onClick={handleNewThread}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New conversation
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
