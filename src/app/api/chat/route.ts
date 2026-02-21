@@ -56,24 +56,28 @@ export async function POST(request: Request) {
   if (threadId) {
     const lastUserMessage = messages.filter(m => m.role === 'user').pop()
     if (lastUserMessage) {
-      const content = extractTextContent(lastUserMessage)
+      try {
+        const content = extractTextContent(lastUserMessage)
 
-      // Upsert to handle potential retries with the same message ID
-      await prisma.chatMessage.upsert({
-        where: { id: lastUserMessage.id },
-        create: {
-          id: lastUserMessage.id,
-          threadId,
-          role: 'user',
-          content,
-        },
-        update: {},
-      })
+        // Upsert to handle potential retries with the same message ID
+        await prisma.chatMessage.upsert({
+          where: { id: lastUserMessage.id },
+          create: {
+            id: lastUserMessage.id,
+            threadId,
+            role: 'user',
+            content,
+          },
+          update: {},
+        })
 
-      await prisma.chatThread.update({
-        where: { id: threadId },
-        data: { updatedAt: new Date() },
-      })
+        await prisma.chatThread.update({
+          where: { id: threadId },
+          data: { updatedAt: new Date() },
+        })
+      } catch (error) {
+        console.error('Failed to save user message:', error)
+      }
     }
   }
 
@@ -83,16 +87,27 @@ export async function POST(request: Request) {
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5),
-    onFinish: async ({ text }) => {
-      if (threadId && text) {
+    onFinish: async ({ text, response }) => {
+      if (!threadId) return
+
+      try {
+        // Extract tool call info from response for debugging/tracing
+        const toolCalls = response.messages
+          .filter(m => m.role === 'assistant')
+          .flatMap(m => Array.isArray(m.content) ? m.content : [])
+          .filter(c => typeof c === 'object' && c.type === 'tool-call')
+
         await prisma.chatMessage.create({
           data: {
             threadId,
             role: 'assistant',
-            content: text,
+            content: text || '',
+            toolCalls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
             model: modelId,
           },
         })
+      } catch (error) {
+        console.error('Failed to save assistant message:', error)
       }
     },
   })
