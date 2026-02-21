@@ -21,8 +21,10 @@ src/generated
 *.db
 *.db-journal
 
-# Uploads
+# Uploads & financial documents
 data/uploads
+*.pdf
+*.csv
 
 # Environment
 .env

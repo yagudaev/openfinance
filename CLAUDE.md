@@ -6,8 +6,8 @@ OpenFinance is a self-hosted personal finance and bookkeeping app for freelancer
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router) + TypeScript (strict)
-- **Database**: Prisma ORM + SQLite (`prisma/data/openfinance.db`)
+- **Framework**: Next.js 16 (App Router, Turbopack) + TypeScript (strict)
+- **Database**: Prisma 7 ORM + SQLite via `@prisma/adapter-better-sqlite3` driver adapter
 - **Auth**: BetterAuth (email/password + sessions)
 - **Styling**: Tailwind CSS v4 + shadcn/ui
 - **Package Manager**: Yarn 4.0.0 (NEVER npm)
@@ -62,3 +62,4 @@ yarn db:migrate           # Run Prisma migrations
 2. **Use Yarn**, not npm
 3. **Tailwind v4 syntax**: `bg-black/10` not `bg-opacity-10`
 4. **Path alias**: `@/*` maps to `src/*`
+5. **NEVER commit real financial data** — This app processes bank statements and financial documents. Before staging ANY file, verify it does not contain real personal/financial data (account numbers, addresses, transaction details, balances). Use synthetic/dummy test data for tests. PDFs, CSVs, and database files are especially high-risk. When in doubt, ask the user before committing.
