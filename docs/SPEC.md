@@ -2,9 +2,9 @@
 
 > The next-generation personal finance and bookkeeping platform, evolved from keeping-books.
 
-**Version:** 1.0  
-**Date:** February 12, 2026  
-**Status:** Draft
+**Version:** 1.1
+**Date:** February 21, 2026
+**Status:** Implemented (v0.1 shipped)
 
 ---
 
@@ -32,7 +32,7 @@
 ### Key Differentiators
 
 - **Self-hosted first**: Single-file SQLite database for easy backup and migration
-- **AI-native**: Built-in financial advisor and market tracking agents via VoltAgent
+- **AI-native**: Built-in financial advisor chat with tool use via OpenRouter + Vercel AI SDK
 - **Privacy-focused**: Your data stays on your server
 - **Open source**: Transparent, community-driven development
 
@@ -132,9 +132,8 @@ The core workflow that powers OpenFinance:
 6. **Storage**: Save statement metadata and transactions
 
 **Improvements over keeping-books:**
-- Local LLM option via VoltAgent (Ollama integration)
-- Batch upload support
-- Background job processing with progress tracking
+- Configurable AI model via OpenRouter (any provider)
+- Background job processing with progress tracking via ProcessingJob/ProcessingLog
 - Support for more bank formats
 
 ### 4.2 Transaction Management
@@ -178,10 +177,9 @@ Key metrics displayed:
 - **Cash Flow Chart** (12-month bar chart, positive/negative)
 - Multi-currency support (USD converted to CAD)
 
-**New in OpenFinance:**
+**Future enhancements:**
 - **Net Worth Tracking** (when connected to asset accounts)
 - **Category Breakdown** (pie chart of expenses)
-- **AI-Generated Insights** (see AI Features)
 - **Savings Rate** calculation
 
 ### 4.5 Account Management
@@ -192,10 +190,9 @@ Key metrics displayed:
 - **Currency assignment**: CAD or USD per account
 - **Bank name tracking**: Auto-detected from statements
 
-**New in OpenFinance:**
-- **Account types**: Checking, Savings, Credit Card, Investment
-- **Account colors**: Visual differentiation
-- **Account ordering**: Drag-and-drop priority
+**Current in OpenFinance:**
+- **Account types**: Chequing, Savings, Credit Card, other
+- **Ownership type**: Personal or Business
 
 ### 4.6 Settings
 
@@ -208,11 +205,9 @@ Key metrics displayed:
   - End month and day (default: Dec 31)
   - Affects fiscal year filters in transactions
 
-**New in OpenFinance:**
-- **AI provider settings**: OpenAI API key, Ollama URL
-- **Notification preferences**: Email, push
-- **Data export/import**: Full account backup
-- **Appearance**: Theme (light/dark/system)
+**Current in OpenFinance:**
+- **AI model selection**: Configurable via OpenRouter (e.g., Cerebras, GPT-4o-mini)
+- **AI context**: Free-text context for personalized AI responses
 
 ---
 
@@ -220,9 +215,9 @@ Key metrics displayed:
 
 ### 5.1 Transaction Categorization (Existing)
 
-**From keeping-books ✓** - Enhanced with VoltAgent
+**From keeping-books ✓** - Enhanced with configurable AI models
 
-Current implementation uses GPT for batch categorization:
+Current implementation uses AI (via OpenRouter) for batch categorization:
 
 ```
 Categories:
@@ -233,82 +228,58 @@ Categories:
 - shareholder-loan: Owner lending money to company
 ```
 
-**OpenFinance enhancements:**
+**Future enhancements:**
 - Learn from user corrections (feedback loop)
 - Subcategory suggestions
 - Rule-based auto-categorization (before hitting AI)
 
-### 5.2 Financial Advisor Agent (New)
+### 5.2 AI Financial Chat (Implemented)
 
-**VoltAgent-powered conversational AI**
+**Vercel AI SDK with OpenRouter and tool use**
 
-A chat-based financial advisor that can:
+A chat-based financial advisor built with the Vercel AI SDK (`ai` package) and OpenRouter for model access. The default model is Cerebras Llama 4 Scout for fast responses. Users can change the model in Settings.
+
+The AI chat can:
 
 1. **Answer questions about your finances**
    - "How much did I spend on software subscriptions last quarter?"
    - "What's my average monthly income this year?"
    - "Which category has grown the most?"
 
-2. **Provide proactive insights**
-   - "Your expenses increased 25% this month vs. average"
-   - "You have an unusual large transaction to review"
-   - "You're on track to exceed last year's income"
+2. **Query data in real-time via tools**
+   - `search_transactions` -- search and filter transactions by description, date, category, type
+   - `get_account_summary` -- summary of all bank accounts with latest balances
+   - `get_cashflow` -- income vs. expenses for any date range
+   - `get_category_breakdown` -- spending by category for any period
+   - `get_settings` -- read current user settings
+   - `update_settings` -- modify user settings via chat
 
-3. **Make recommendations**
-   - "Based on your cash flow, you could save $X more per month"
-   - "Consider categorizing recurring transfers as internal-transfer"
-   - "Your fiscal year is ending in 2 months — time for tax prep"
-
-**Implementation:**
-- VoltAgent with tools for querying transaction database
-- Memory of previous conversations
-- Scheduled check-ins (optional)
-
-### 5.3 Market Tracking Agent (New)
-
-**VoltAgent-powered market awareness**
-
-For users tracking investments or business expenses tied to markets:
-
-1. **Daily/Weekly summaries**
-   - "S&P 500 up 2% this week"
-   - "CAD/USD rate is 1.37"
-   - "Interest rates expected to change"
-
-2. **Personalized alerts**
-   - Currency rate thresholds (notify when USD/CAD hits 1.40)
-   - Stock price movements for holdings
-   - Economic indicator changes
-
-3. **Investment insights** (future)
-   - Portfolio performance tracking
-   - Dividend tracking
-   - Tax-loss harvesting suggestions
+3. **Custom context**
+   - Users can provide free-text context about their financial situation in Settings
+   - This context is included in every conversation for personalized responses
 
 **Implementation:**
-- VoltAgent with web search tools
-- Scheduled cron jobs for market data
-- User-configured watchlist
+- Vercel AI SDK (`ai` + `@ai-sdk/react`) for streaming chat UI
+- OpenRouter provider (`@openrouter/ai-sdk-provider`) for model access
+- Custom tools defined in `src/lib/chat/tools.ts` that query Prisma directly
+- Chat threads and messages persisted in `ChatThread` and `ChatMessage` models
+- Each conversation turn allows up to 5 tool calls
 
-### 5.4 Statement Processing AI (Enhanced)
+### 5.3 Statement Processing AI (Implemented)
 
-**From keeping-books ✓** - VoltAgent integration
+**From keeping-books ✓** - using OpenRouter
 
-The existing statement processor uses OpenAI GPT-5-nano. OpenFinance will:
+The statement processor sends PDF pages as images + extracted text to the AI model for structured data extraction with iterative balance verification (up to 15 retries).
 
-1. **Support multiple providers**:
-   - OpenAI (cloud, default)
-   - Anthropic Claude (cloud)
-   - Ollama (local, privacy-first)
+**Current implementation:**
+- Uses OpenRouter for AI model access (configurable model)
+- `pdf-parse` for text extraction from PDF
+- Iterative verification: retries extraction if balance doesn't match
+- Processing tracked via `ProcessingJob` and `ProcessingLog` models
 
-2. **Improve accuracy with RAG**:
-   - Learn bank-specific formats
-   - Use previous statements as context
+### 5.4 Market Tracking (Future)
 
-3. **Handle edge cases better**:
-   - Multi-currency statements
-   - Foreign transaction formatting
-   - Complex fee structures
+Market tracking and investment features are planned for a future release.
 
 ---
 
@@ -318,17 +289,20 @@ The existing statement processor uses OpenAI GPT-5-nano. OpenFinance will:
 
 | Component | keeping-books | OpenFinance |
 |-----------|---------------|-------------|
-| Framework | Next.js 16 + App Router | Next.js 16 + App Router |
-| Language | TypeScript | TypeScript |
-| Database | Supabase (PostgreSQL) | Prisma + SQLite (default) / PostgreSQL |
-| Auth | Supabase Auth | NextAuth.js (self-hosted) |
-| ORM | Supabase Client | Prisma |
-| Storage | Supabase Storage | Local filesystem / S3-compatible |
-| AI | OpenAI SDK | VoltAgent + OpenAI/Anthropic/Ollama |
-| Styling | Tailwind CSS + shadcn/ui | Tailwind CSS + shadcn/ui |
-| PDF | react-pdf + pdfjs-dist | react-pdf + pdfjs-dist |
+| Framework | Next.js 16 + App Router | Next.js 16 + App Router (Turbopack) |
+| Language | TypeScript | TypeScript (strict) |
+| Database | Supabase (PostgreSQL) | Prisma 7 + SQLite via `@prisma/adapter-better-sqlite3` |
+| Auth | Supabase Auth | BetterAuth (email/password + Google OAuth) |
+| ORM | Supabase Client | Prisma 7 |
+| Storage | Supabase Storage | Local filesystem |
+| AI | OpenAI SDK | OpenRouter + Vercel AI SDK with tool use |
+| Styling | Tailwind CSS + shadcn/ui | Tailwind CSS v4 + shadcn/ui |
+| PDF | react-pdf + pdfjs-dist | pdf-parse |
 | Charts | Recharts | Recharts |
-| Hosting | Vercel + Supabase Cloud | Self-hosted VPS / Docker |
+| Hosting | Vercel + Supabase Cloud | Docker on Coolify (Hetzner Cloud) |
+| Testing | - | Playwright E2E |
+| CI | - | GitHub Actions (lint, typecheck, Playwright) |
+| Package Manager | - | Yarn 4.0.0 |
 
 ### 6.2 System Architecture
 
@@ -338,9 +312,9 @@ The existing statement processor uses OpenAI GPT-5-nano. OpenFinance will:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │   Next.js   │    │  VoltAgent  │    │   Prisma    │         │
-│  │   Frontend  │◄──►│   AI Layer  │◄──►│     ORM     │         │
-│  │  (React 19) │    │             │    │             │         │
+│  │   Next.js   │    │ Vercel AI   │    │   Prisma 7  │         │
+│  │   Frontend  │◄──►│  SDK + Tool │◄──►│     ORM     │         │
+│  │  (React 19) │    │    Use      │    │             │         │
 │  └─────────────┘    └─────────────┘    └──────┬──────┘         │
 │         │                  │                   │                │
 │         │                  │                   ▼                │
@@ -351,110 +325,104 @@ The existing statement processor uses OpenAI GPT-5-nano. OpenFinance will:
 │         │                  │                                    │
 │         │                  ▼                                    │
 │         │           ┌─────────────┐                             │
-│         │           │   OpenAI    │                             │
-│         │           │  Anthropic  │                             │
-│         │           │   Ollama    │                             │
+│         │           │ OpenRouter  │                             │
+│         │           │ (Cerebras,  │                             │
+│         │           │  GPT, etc.) │                             │
 │         │           └─────────────┘                             │
 │         │                                                        │
 │         ▼                                                        │
-│  ┌─────────────┐                                                │
-│  │   File      │                                                │
-│  │   Storage   │                                                │
-│  │   (local)   │                                                │
-│  └─────────────┘                                                │
+│  ┌─────────────┐    ┌─────────────┐                             │
+│  │ BetterAuth  │    │   File      │                             │
+│  │  (sessions  │    │   Storage   │                             │
+│  │ + OAuth)    │    │   (local)   │                             │
+│  └─────────────┘    └─────────────┘                             │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 VoltAgent Integration
+### 6.3 AI Chat Implementation
 
-VoltAgent provides the AI agent framework for OpenFinance:
+The AI chat uses the Vercel AI SDK with OpenRouter for model access:
 
 ```typescript
-// Example: Financial Advisor Agent
-import { VoltAgent, createTool } from '@voltagent/core'
+// Example: AI chat tools (simplified from src/lib/chat/tools.ts)
+import { tool } from 'ai'
+import { z } from 'zod'
+import { prisma } from '@/lib/prisma'
 
-const advisorAgent = new VoltAgent({
-  name: 'FinancialAdvisor',
-  model: 'gpt-4o', // or 'ollama/llama3'
-  tools: [
-    createTool({
-      name: 'queryTransactions',
+export function createChatTools(userId: string) {
+  return {
+    search_transactions: tool({
       description: 'Search and filter transactions',
-      parameters: { /* schema */ },
+      inputSchema: z.object({
+        query: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        category: z.string().optional(),
+        limit: z.coerce.number().optional().default(20),
+      }),
       execute: async (params) => {
-        // Query Prisma database
-      }
+        // Query Prisma database directly
+      },
     }),
-    createTool({
-      name: 'getAccountSummary',
-      description: 'Get summary statistics for accounts',
-      // ...
-    }),
-    createTool({
-      name: 'getCashFlow',
-      description: 'Get cash flow data for a period',
-      // ...
-    })
-  ],
-  systemPrompt: `You are a helpful financial advisor...`
-})
+    get_account_summary: tool({ /* ... */ }),
+    get_cashflow: tool({ /* ... */ }),
+    get_category_breakdown: tool({ /* ... */ }),
+    get_settings: tool({ /* ... */ }),
+    update_settings: tool({ /* ... */ }),
+  }
+}
 ```
 
 ### 6.4 Directory Structure
 
 ```
 openfinance/
-├── app/                          # Next.js App Router
-│   ├── (auth)/                   # Auth routes (login, signup)
-│   ├── (dashboard)/              # Protected routes
-│   │   ├── dashboard/
-│   │   ├── transactions/
-│   │   ├── statements/
-│   │   ├── accounts/
-│   │   ├── advisor/              # AI advisor chat
-│   │   └── settings/
-│   ├── api/                      # API routes
-│   │   ├── auth/[...nextauth]/
-│   │   ├── transactions/
-│   │   ├── statements/
-│   │   ├── process-statement/
-│   │   ├── categorize/
-│   │   └── advisor/              # VoltAgent endpoints
-│   ├── layout.tsx
-│   └── page.tsx                  # Landing page
-├── components/
-│   ├── ui/                       # shadcn/ui components
-│   ├── transactions/
-│   ├── statements/
-│   ├── dashboard/
-│   ├── advisor/                  # Chat UI components
-│   └── shared/
-├── lib/
-│   ├── prisma.ts                 # Prisma client
-│   ├── auth.ts                   # NextAuth config
-│   ├── voltagent/                # AI agent configurations
-│   │   ├── advisor.ts
-│   │   ├── market-tracker.ts
-│   │   └── statement-processor.ts
-│   ├── services/
-│   │   ├── statement-processor.ts
-│   │   ├── transaction-categorizer.ts
-│   │   └── pdf-processor.ts
-│   └── utils/
+├── src/
+│   ├── app/                      # Next.js App Router
+│   │   ├── auth/                 # Auth pages (login, sign-up)
+│   │   ├── (private)/            # Protected routes
+│   │   │   ├── dashboard/
+│   │   │   ├── transactions/
+│   │   │   ├── statements/
+│   │   │   ├── chat/             # AI financial chat
+│   │   │   └── settings/
+│   │   ├── api/                  # API routes
+│   │   │   ├── auth/             # BetterAuth handler
+│   │   │   ├── chat/             # AI chat endpoint (streaming)
+│   │   │   ├── process-statement/
+│   │   │   └── upload/
+│   │   ├── layout.tsx
+│   │   └── page.tsx              # Marketing landing page
+│   ├── components/
+│   │   └── ui/                   # shadcn/ui components
+│   ├── lib/
+│   │   ├── prisma.ts             # Prisma client singleton
+│   │   ├── auth.ts               # BetterAuth config
+│   │   ├── auth-client.ts        # BetterAuth client
+│   │   ├── openai.ts             # OpenRouter provider setup
+│   │   ├── chat/                 # AI chat
+│   │   │   ├── system-prompt.ts
+│   │   │   └── tools.ts          # Chat tools (6 tools)
+│   │   ├── services/
+│   │   │   ├── statement-processor.ts
+│   │   │   ├── transaction-categorizer.ts
+│   │   │   ├── dashboard.ts
+│   │   │   └── dashboard-types.ts
+│   │   ├── constants/
+│   │   └── utils/
+│   ├── hooks/
+│   └── types/
 ├── prisma/
 │   ├── schema.prisma
+│   ├── prisma.config.ts
 │   └── migrations/
-├── public/
-│   ├── pdf.worker.min.js
-│   └── uploads/                  # Statement PDFs (gitignored)
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── docs/
-│   └── self-hosting.md
-└── marketing/                    # Vercel-hosted marketing site
-    └── (separate repo or folder)
+├── docs/                         # Mintlify documentation site
+├── server-setup/                 # Server provisioning scripts
+├── e2e/                          # Playwright E2E tests
+├── .github/workflows/            # CI (lint, typecheck, Playwright)
+├── Dockerfile
+└── public/
 ```
 
 ---
@@ -463,582 +431,271 @@ openfinance/
 
 ### 7.1 Prisma Schema
 
-```prisma
-// prisma/schema.prisma
+The actual schema uses SQLite (no enums, uses string fields instead). See `prisma/schema.prisma` for the source of truth.
 
+```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite" // or "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
 }
 
-// ============================================
-// Authentication
-// ============================================
-
+// BetterAuth tables (managed by better-auth)
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id
+  name          String
   email         String    @unique
-  name          String?
-  passwordHash  String?
-  emailVerified DateTime?
+  emailVerified Boolean   @default(false)
   image         String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  accounts         Account[]
-  bankStatements   BankStatement[]
-  transactions     Transaction[]
-  userSettings     UserSettings?
-  processingJobs   ProcessingJob[]
-  advisorChats     AdvisorChat[]
-  marketWatchlist  MarketWatchItem[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  bankAccounts  BankAccount[]
+  statements    BankStatement[]
+  transactions  Transaction[]
+  settings      UserSettings?
+  processingJobs ProcessingJob[]
+  chatThreads   ChatThread[]
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Session { /* BetterAuth managed */ }
+model Account { /* BetterAuth managed - OAuth providers */ }
+model Verification { /* BetterAuth managed */ }
+
+// App tables
+model UserSettings {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  fiscalYearEndMonth Int      @default(12)
+  fiscalYearEndDay   Int      @default(31)
+  bankTimezone       String   @default("America/Vancouver")
+  userTimezone       String   @default("America/Vancouver")
+  aiContext          String?
+  aiModel            String   @default("openai/gpt-4o-mini")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
-// ============================================
-// Core Financial Models
-// ============================================
-
-model Account {
-  id            String   @id @default(cuid())
+model BankAccount {
+  id            String   @id @default(uuid())
   userId        String
   accountNumber String
   nickname      String
   bankName      String?
-  accountType   AccountType @default(CHECKING)
-  currency      Currency    @default(CAD)
-  color         String?     // Hex color for UI
-  sortOrder     Int         @default(0)
-  isActive      Boolean     @default(true)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  currency      String   @default("CAD")
+  accountType   String   @default("chequing")
+  ownershipType String   @default("personal")
   @@unique([userId, accountNumber])
-  @@index([userId])
-}
-
-enum AccountType {
-  CHECKING
-  SAVINGS
-  CREDIT_CARD
-  INVESTMENT
-  OTHER
-}
-
-enum Currency {
-  CAD
-  USD
 }
 
 model BankStatement {
-  id                   String   @id @default(cuid())
-  userId               String
-  fileName             String
-  filePath             String   // Local file path
-  fileSize             Int
-  contentHash          String?  // For duplicate detection
-  
-  // Extracted metadata
-  bankName             String
-  accountNumber        String?
-  accountType          String?
-  statementDate        DateTime
-  periodStart          DateTime
-  periodEnd            DateTime
-  openingBalance       Decimal  @db.Decimal(12, 2)
-  closingBalance       Decimal  @db.Decimal(12, 2)
-  totalDeposits        Decimal? @db.Decimal(12, 2)
-  totalWithdrawals     Decimal? @db.Decimal(12, 2)
-  
-  // Processing status
-  isProcessed          Boolean  @default(false)
-  processedAt          DateTime?
-  processingTimezone   String?
-  
-  // Verification
-  verificationStatus   VerificationStatus @default(PENDING)
-  humanVerified        Boolean  @default(false)
-  humanVerifiedAt      DateTime?
-  discrepancyAmount    Decimal? @db.Decimal(12, 2)
-  
-  // Duplicate handling
-  duplicateOf          String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user                 User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentStatement      BankStatement? @relation("DuplicateStatements", fields: [duplicateOf], references: [id])
-  duplicateStatements  BankStatement[] @relation("DuplicateStatements")
-  transactions         Transaction[]
-  balanceVerifications BalanceVerification[]
-  processingJobs       ProcessingJob[]
-  
-  @@index([userId])
-  @@index([accountNumber])
-  @@index([statementDate])
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  UNBALANCED
+  id                 String    @id @default(uuid())
+  userId             String
+  bankAccountId      String?
+  fileName           String
+  fileUrl            String
+  fileSize           Int
+  contentHash        String?
+  duplicateOf        String?
+  bankName           String
+  accountNumber      String?
+  statementDate      DateTime
+  periodStart        DateTime
+  periodEnd          DateTime
+  openingBalance     Float
+  closingBalance     Float
+  totalDeposits      Float?
+  totalWithdrawals   Float?
+  isProcessed        Boolean   @default(false)
+  processedAt        DateTime?
+  processingTimezone String?
+  verificationStatus String?
+  discrepancyAmount  Float?
 }
 
 model Transaction {
-  id              String   @id @default(cuid())
+  id              String        @id @default(uuid())
   userId          String
   statementId     String
-  
   transactionDate DateTime
   description     String
-  amount          Decimal  @db.Decimal(12, 2) // Positive for credit, negative for debit
-  balance         Decimal? @db.Decimal(12, 2)
-  transactionType TransactionType
-  category        TransactionCategory?
+  amount          Float
+  balance         Float?
+  transactionType String        @default("debit")
+  category        String?
   referenceNumber String?
-  sortOrder       Int?     // Order within statement
-  
-  // User edits
-  userDescription String?  // User-edited description
-  userNotes       String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  statement BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
-  @@index([statementId])
-  @@index([transactionDate])
-  @@index([category])
-}
-
-enum TransactionType {
-  CREDIT
-  DEBIT
-}
-
-enum TransactionCategory {
-  EXPENSE
-  INCOME
-  OWNER_PAY
-  INTERNAL_TRANSFER
-  SHAREHOLDER_LOAN
-  UNCATEGORIZED
+  sortOrder       Int?
+  @@unique([statementId, transactionDate, description, amount, balance])
 }
 
 model BalanceVerification {
-  id                        String  @id @default(cuid())
-  statementId               String
-  
-  calculatedOpeningBalance  Decimal @db.Decimal(12, 2)
-  calculatedClosingBalance  Decimal @db.Decimal(12, 2)
-  statementOpeningBalance   Decimal @db.Decimal(12, 2)
-  statementClosingBalance   Decimal @db.Decimal(12, 2)
-  
+  id                        String   @id @default(uuid())
+  statementId               String   @unique
+  calculatedOpeningBalance  Float
+  calculatedClosingBalance  Float
+  statementOpeningBalance   Float
+  statementClosingBalance   Float
   isBalanced                Boolean
-  discrepancyAmount         Decimal? @db.Decimal(12, 2)
+  discrepancyAmount         Float?
   notes                     String?
-  
-  verificationDate DateTime @default(now())
-  
-  statement BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  
-  @@index([statementId])
 }
-
-// ============================================
-// Processing & Jobs
-// ============================================
 
 model ProcessingJob {
-  id           String           @id @default(cuid())
-  userId       String
-  statementId  String?
-  fileName     String
-  status       ProcessingStatus @default(PENDING)
-  
+  id          String    @id @default(uuid())
+  userId      String
+  statementId String?
+  fileName    String
+  status      String    @default("pending")
   errorMessage String?
-  
-  startedAt    DateTime?
-  completedAt  DateTime?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  statement BankStatement? @relation(fields: [statementId], references: [id])
-  logs      ProcessingLog[]
-  
-  @@index([userId])
-  @@index([status])
-}
-
-enum ProcessingStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
+  startedAt   DateTime?
+  completedAt DateTime?
+  logs        ProcessingLog[]
 }
 
 model ProcessingLog {
-  id             String @id @default(cuid())
+  id             String   @id @default(uuid())
   jobId          String
   sequenceNumber Int
-  logType        String // info, warning, error, debug
-  title          String
-  content        Json?
-  
-  createdAt DateTime @default(now())
-  
-  job ProcessingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  @@index([jobId])
+  logType        String
+  title          String?
+  content        String?
 }
 
-// ============================================
-// User Settings
-// ============================================
-
-model UserSettings {
-  id                  String  @id @default(cuid())
-  userId              String  @unique
-  
-  // Timezone settings
-  bankTimezone        String  @default("America/Toronto")
-  userTimezone        String  @default("America/Vancouver")
-  
-  // Fiscal year settings
-  fiscalYearEndMonth  Int     @default(12) // 1-12
-  fiscalYearEndDay    Int     @default(31)
-  
-  // AI settings
-  aiProvider          AIProvider @default(OPENAI)
-  openaiApiKey        String?    // Encrypted
-  ollamaUrl           String?
-  preferredModel      String?
-  
-  // Notification settings
-  emailNotifications  Boolean @default(true)
-  weeklyDigest        Boolean @default(false)
-  
-  // Appearance
-  theme               Theme   @default(SYSTEM)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+model ChatThread {
+  id         String   @id @default(uuid())
+  userId     String
+  title      String?
+  isArchived Boolean  @default(false)
+  messages   ChatMessage[]
 }
 
-enum AIProvider {
-  OPENAI
-  ANTHROPIC
-  OLLAMA
-}
-
-enum Theme {
-  LIGHT
-  DARK
-  SYSTEM
-}
-
-// ============================================
-// AI Features
-// ============================================
-
-model AdvisorChat {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String?  // Auto-generated from first message
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages AdvisorMessage[]
-  
-  @@index([userId])
-}
-
-model AdvisorMessage {
-  id        String @id @default(cuid())
-  chatId    String
-  role      MessageRole
-  content   String
-  
-  // Tool calls (if any)
-  toolCalls Json?
-  toolResults Json?
-  
-  createdAt DateTime @default(now())
-  
-  chat AdvisorChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  
-  @@index([chatId])
-}
-
-enum MessageRole {
-  USER
-  ASSISTANT
-  SYSTEM
-  TOOL
-}
-
-model MarketWatchItem {
-  id        String         @id @default(cuid())
-  userId    String
-  type      WatchItemType
-  symbol    String         // e.g., "AAPL", "USD/CAD"
-  name      String         // e.g., "Apple Inc.", "US Dollar"
-  
-  // Alert settings
-  alertEnabled    Boolean @default(false)
-  alertThreshold  Decimal? @db.Decimal(12, 4)
-  alertDirection  AlertDirection?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, type, symbol])
-  @@index([userId])
-}
-
-enum WatchItemType {
-  STOCK
-  CURRENCY
-  CRYPTO
-  INDEX
-}
-
-enum AlertDirection {
-  ABOVE
-  BELOW
-}
-
-// ============================================
-// Audit & Logging
-// ============================================
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  details   Json?
-  ipAddress String?
-  userAgent String?
-  
-  createdAt DateTime @default(now())
-  
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
+model ChatMessage {
+  id         String   @id @default(uuid())
+  threadId   String
+  role       String
+  content    String
+  toolCalls  String?
+  toolCallId String?
+  model      String?
 }
 ```
+
+**Key differences from original spec:**
+- SQLite does not support enums -- all enum fields are plain strings
+- No `Decimal` type -- uses `Float` for monetary values
+- BetterAuth manages auth tables (User, Session, Account, Verification)
+- No `AdvisorChat`/`AdvisorMessage` models -- replaced by `ChatThread`/`ChatMessage`
+- No `MarketWatchItem` or `AuditLog` models (not yet implemented)
+- `UserSettings.aiModel` is a string (e.g., `"openai/gpt-4o-mini"`) instead of separate enum + key fields
+- Generated client output goes to `src/generated/prisma/` (gitignored)
+- Datasource URL is configured in `prisma.config.ts` (Prisma 7 pattern), not in schema
 
 ### 7.2 Model Relationships Diagram
 
 ```
 User
 ├── UserSettings (1:1)
-├── Account[] (1:N)
+├── BankAccount[] (1:N)
+│   └── BankStatement[] (1:N)
 ├── BankStatement[] (1:N)
 │   ├── Transaction[] (1:N)
-│   ├── BalanceVerification[] (1:N)
+│   ├── BalanceVerification (1:1)
 │   └── ProcessingJob[] (1:N)
 │       └── ProcessingLog[] (1:N)
-├── AdvisorChat[] (1:N)
-│   └── AdvisorMessage[] (1:N)
-└── MarketWatchItem[] (1:N)
+├── ChatThread[] (1:N)
+│   └── ChatMessage[] (1:N)
+├── Session[] (1:N)          # BetterAuth
+└── Account[] (1:N)          # BetterAuth (OAuth providers)
 ```
 
 ---
 
 ## 8. API Routes Structure
 
-### 8.1 Authentication Routes
+### 8.1 Authentication Routes (BetterAuth)
 
 ```
-/api/auth/[...nextauth]
-├── POST /api/auth/signin
-├── POST /api/auth/signout
-├── GET  /api/auth/session
-└── GET  /api/auth/csrf
+/api/auth/**                     # BetterAuth catch-all handler
+├── POST /api/auth/sign-up/email # Create account
+├── POST /api/auth/sign-in/email # Sign in with email/password
+├── POST /api/auth/sign-out      # Sign out
+├── GET  /api/auth/get-session   # Get current session
+└── POST /api/auth/sign-in/social # Google OAuth (if configured)
 ```
 
-### 8.2 Core API Routes
+### 8.2 Core API Routes (Implemented)
 
 ```
-/api/statements
-├── GET    /                     # List all statements
-├── POST   /                     # Upload new statement
-├── GET    /:id                  # Get statement details
-├── PATCH  /:id                  # Update statement metadata
-├── DELETE /:id                  # Delete statement + transactions
-├── POST   /:id/reprocess        # Reprocess statement with AI
-└── PATCH  /:id/verify           # Mark as human verified
-
-/api/transactions
-├── GET    /                     # List transactions (with filters)
-├── POST   /                     # Create manual transaction
-├── PATCH  /:id                  # Update transaction
-├── DELETE /:id                  # Delete transaction
-├── POST   /bulk-delete          # Delete multiple
-├── POST   /bulk-categorize      # Categorize multiple
-└── GET    /export               # Export to CSV
-
-/api/accounts
-├── GET    /                     # List all accounts
-├── POST   /                     # Create account nickname
-├── PATCH  /:id                  # Update account
-└── DELETE /:id                  # Delete account
+/api/upload
+└── POST   /                     # Upload bank statement PDF(s)
 
 /api/process-statement
-├── POST   /                     # Start processing job
-└── GET    /jobs                 # List processing jobs
-    └── GET /:id                 # Get job status + logs
+└── POST   /                     # Trigger AI processing of uploaded statement
 
-/api/categorize
-└── POST   /                     # AI categorize transactions
-
-/api/settings
-├── GET    /                     # Get user settings
-└── PATCH  /                     # Update settings
+/api/chat
+└── POST   /                     # AI chat (streaming, Vercel AI SDK format)
 ```
 
-### 8.3 AI Routes
-
-```
-/api/advisor
-├── POST   /chat                 # Send message to advisor
-├── GET    /chats                # List chat history
-├── GET    /chats/:id            # Get chat messages
-└── DELETE /chats/:id            # Delete chat
-
-/api/market
-├── GET    /watchlist            # Get user's watchlist
-├── POST   /watchlist            # Add item to watchlist
-├── DELETE /watchlist/:id        # Remove from watchlist
-├── GET    /quotes               # Get current prices
-└── GET    /summary              # AI market summary
-```
-
-### 8.4 Dashboard Routes
-
-```
-/api/dashboard
-├── GET    /stats                # Monthly income/expenses
-├── GET    /cashflow             # 12-month cash flow data
-├── GET    /categories           # Expense breakdown by category
-└── GET    /insights             # AI-generated insights
-```
+Note: Most data operations (dashboard stats, transaction listing, settings) are handled
+via Server Components and Server Actions rather than dedicated API routes.
 
 ---
 
 ## 9. Deployment Model
 
-### 9.1 Self-Hosted (Primary)
+### 9.1 Self-Hosted with Docker (Primary)
 
-**Target: VPS with Docker**
+**Current production deployment:** Docker on Coolify (Hetzner Cloud) at https://openfinance.to
+
+The Dockerfile uses a multi-stage build:
+1. **deps** -- install dependencies, generate Prisma client
+2. **builder** -- build the Next.js app
+3. **runner** -- production image with standalone output
 
 ```yaml
-# docker-compose.yml
-version: '3.8'
-
+# docker-compose.yml (for self-hosters)
 services:
-  openfinance:
-    image: openfinance/openfinance:latest
-    container_name: openfinance
+  web:
+    image: ghcr.io/yagudaev/openfinance:latest
     ports:
       - "3000:3000"
-    volumes:
-      - ./data:/app/data          # SQLite DB + uploads
-      - ./config:/app/config      # Configuration files
     environment:
-      - DATABASE_URL=file:/app/data/openfinance.db
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=https://finance.yourdomain.com
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Optional
+      - DATABASE_URL=file:./data/openfinance.db
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - openfinance-data:/app/data
     restart: unless-stopped
 
-  # Optional: Ollama for local AI
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    # GPU support (uncomment if available)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
-
 volumes:
-  ollama_data:
+  openfinance-data:
 ```
 
 **Backup Strategy:**
 ```bash
-# Single-file backup
-cp /app/data/openfinance.db ./backup/openfinance-$(date +%Y%m%d).db
-
-# With uploads
-tar -czvf backup-$(date +%Y%m%d).tar.gz /app/data/
+# Single-file backup (SQLite)
+docker cp openfinance-web-1:/app/data/openfinance.db ./backup-$(date +%Y%m%d).db
 ```
 
-### 9.2 Managed Option (Future)
+### 9.2 Production Infrastructure
 
-**PostgreSQL deployment for teams/enterprise:**
+- **Hosting**: Hetzner Cloud VPS
+- **Orchestration**: Coolify (auto-deploy from GitHub, SSL via Traefik/Let's Encrypt)
+- **VPN**: Tailscale for secure SSH access
+- **Firewall**: Hetzner cloud firewall + OS-level Tailscale ACLs
+- **Domain**: openfinance.to
+- **CI**: GitHub Actions (lint, typecheck, Playwright E2E tests)
 
-- Hosted PostgreSQL (Supabase, Neon, Railway)
-- S3-compatible storage for PDFs
-- Multiple user support
-- Shared accounts/workspaces
+### 9.3 Marketing & Docs
 
-### 9.3 Marketing Site
-
-**Hosted on Vercel (separate deployment):**
-
-```
-marketing/
-├── app/
-│   ├── page.tsx           # Landing page
-│   ├── features/
-│   ├── pricing/
-│   ├── docs/
-│   └── blog/
-├── components/
-└── public/
-```
-
-**Domain Strategy:**
-- `openfinance.app` - Marketing site (Vercel)
-- `app.openfinance.app` - Managed cloud option (future)
-- Self-hosted: User's own domain
+- **Landing page**: Built into the main Next.js app at `/` (shown to unauthenticated users)
+- **Documentation**: Mintlify docs site (hosted separately)
+- **Domain**: openfinance.to for the app, docs.openfinance.to for documentation
 
 ---
 
@@ -1084,24 +741,25 @@ async function migrateData() {
 
 ### 10.2 Feature Parity Checklist
 
-| Feature | keeping-books | OpenFinance |
-|---------|---------------|-------------|
-| PDF Upload | ✓ | ✓ |
-| AI Extraction | ✓ GPT-5-nano | ✓ VoltAgent (multi-provider) |
-| Transaction Categories | ✓ 5 categories | ✓ 5 categories + custom |
-| Balance Verification | ✓ | ✓ |
-| Multi-account | ✓ | ✓ |
-| Multi-currency | ✓ CAD/USD | ✓ CAD/USD (extensible) |
-| Fiscal Year | ✓ | ✓ |
-| Dashboard | ✓ | ✓ Enhanced |
-| PDF Viewer | ✓ | ✓ |
-| Transaction Filters | ✓ | ✓ |
-| Export CSV | ✓ | ✓ |
-| AI Categorization | ✓ | ✓ Enhanced |
-| AI Advisor | ✗ | ✓ New |
-| Market Tracking | ✗ | ✓ New |
-| Self-hosted | ✗ | ✓ Primary |
-| Local AI (Ollama) | ✗ | ✓ New |
+| Feature | keeping-books | OpenFinance | Status |
+|---------|---------------|-------------|--------|
+| PDF Upload | ✓ | ✓ | Shipped |
+| AI Extraction | ✓ GPT | ✓ OpenRouter (configurable) | Shipped |
+| Transaction Categories | ✓ 5 categories | ✓ 5 categories | Shipped |
+| Balance Verification | ✓ | ✓ | Shipped |
+| Multi-account | ✓ | ✓ | Shipped |
+| Multi-currency | ✓ CAD/USD | ✓ CAD/USD | Shipped |
+| Fiscal Year | ✓ | ✓ | Shipped |
+| Dashboard | ✓ | ✓ | Shipped |
+| Transaction Filters | ✓ | ✓ | Shipped |
+| AI Categorization | ✓ | ✓ | Shipped |
+| AI Chat | ✗ | ✓ | Shipped |
+| Self-hosted | ✗ | ✓ | Shipped |
+| Google OAuth | ✗ | ✓ | Shipped |
+| E2E Tests | ✗ | ✓ | Shipped |
+| PDF Viewer | ✓ | ✗ | Not yet ported |
+| Export CSV | ✓ | ✗ | Not yet ported |
+| Market Tracking | ✗ | ✗ | Future |
 
 ---
 
@@ -1167,41 +825,38 @@ Settings           - User preferences
 
 ## 12. Future Roadmap
 
-### Phase 1: MVP (v1.0)
+### Phase 1: MVP (v0.1) -- COMPLETE
 
-**Core Feature Parity + Self-Hosting**
+**Core Feature Parity + Self-Hosting (shipped Feb 21, 2026)**
 
-- [ ] Prisma schema + SQLite setup
-- [ ] NextAuth.js authentication
-- [ ] Statement upload + processing
-- [ ] Transaction management
-- [ ] Dashboard with cash flow
-- [ ] Docker deployment
-- [ ] Documentation
+- [x] Prisma 7 schema + SQLite setup
+- [x] BetterAuth authentication (email/password + Google OAuth)
+- [x] Statement upload + AI processing
+- [x] Transaction management with filters
+- [x] Dashboard with cash flow chart
+- [x] AI financial chat with tool use
+- [x] Settings page (fiscal year, timezone, AI model)
+- [x] Docker deployment on Coolify
+- [x] Playwright E2E tests + GitHub Actions CI
+- [x] Mintlify documentation site
 
-**Timeline:** 4-6 weeks
+### Phase 2: Polish (v0.2)
 
-### Phase 2: AI Features (v1.1)
+**Refinement + Missing Features**
 
-**VoltAgent Integration**
-
-- [ ] Financial Advisor agent
+- [ ] PDF viewer for statement verification
+- [ ] CSV export
 - [ ] Enhanced categorization with learning
-- [ ] Ollama support for local AI
-- [ ] Basic market tracking
+- [ ] Mobile-responsive improvements
+- [ ] Performance optimization
 
-**Timeline:** 2-3 weeks
+### Phase 3: Growth (v1.0)
 
-### Phase 3: Polish (v1.2)
-
-**Refinement + Community**
+**Community + Advanced Features**
 
 - [ ] Migration tool from keeping-books
-- [ ] Mobile-responsive design
-- [ ] Performance optimization
+- [ ] Market tracking
 - [ ] Community feedback integration
-
-**Timeline:** 2-3 weeks
 
 ### Future Considerations (v2.0+)
 
@@ -1268,23 +923,20 @@ Settings           - User preferences
 # Database
 DATABASE_URL="file:./data/openfinance.db"
 
-# Authentication
-NEXTAUTH_SECRET="generate-a-secure-secret"
-NEXTAUTH_URL="https://your-domain.com"
+# Authentication (BetterAuth)
+BETTER_AUTH_SECRET="generate-with-openssl-rand-base64-32"
+BETTER_AUTH_URL="https://your-domain.com"
 
-# AI Providers (at least one required)
-OPENAI_API_KEY="sk-..."
-ANTHROPIC_API_KEY="sk-ant-..."
-OLLAMA_URL="http://localhost:11434"
+# AI (at least one required)
+OPENAI_API_KEY="sk-..."              # For statement processing
+OPENROUTER_API_KEY="sk-or-..."       # For AI chat (Cerebras, etc.)
 
-# File Storage
-UPLOAD_DIR="./data/uploads"
+# Optional: Google OAuth
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
 
-# Optional: External Services
-SMTP_HOST="smtp.example.com"
-SMTP_PORT="587"
-SMTP_USER="..."
-SMTP_PASS="..."
+# Optional: Server
+DEPLOY_HOST="your-server-ip"
 ```
 
 ---
@@ -1292,10 +944,13 @@ SMTP_PASS="..."
 ## Appendix C: References
 
 - [keeping-books Repository](https://github.com/yagudaev/keeping-books)
-- [VoltAgent Documentation](https://voltagent.dev)
 - [Next.js 16 Documentation](https://nextjs.org/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
+- [Prisma 7 Documentation](https://www.prisma.io/docs)
+- [BetterAuth Documentation](https://www.better-auth.com/)
+- [Vercel AI SDK Documentation](https://ai-sdk.dev/)
+- [OpenRouter Documentation](https://openrouter.ai/docs)
 - [shadcn/ui Components](https://ui.shadcn.com)
+- [Coolify Documentation](https://coolify.io/docs)
 
 ---
 

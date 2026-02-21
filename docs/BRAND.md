@@ -436,56 +436,29 @@ Mono:       14px / 20px  — IBM Plex Mono 400
 
 ### Tailwind Configuration
 
-```js
-// tailwind.config.js
-const defaultTheme = require('tailwindcss/defaultTheme')
+OpenFinance uses Tailwind CSS v4 with CSS-based configuration (no `tailwind.config.js`).
+Brand colors and theme tokens are defined in `src/app/globals.css` using CSS custom properties
+and Tailwind v4's `@theme` directive.
 
-module.exports = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        // Brand colors
-        brand: {
-          DEFAULT: '#8B5CF6',
-          50: '#F5F3FF',
-          100: '#EDE9FE',
-          200: '#DDD6FE',
-          300: '#C4B5FD',
-          400: '#A78BFA',
-          500: '#8B5CF6',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
-          950: '#2E1065',
-        },
-        // Override zinc for consistency
-        surface: {
-          DEFAULT: '#FFFFFF',
-          dark: '#18181B',
-        },
-      },
-      fontFamily: {
-        heading: ['"Space Grotesk"', ...defaultTheme.fontFamily.sans],
-        body: ['"IBM Plex Sans"', ...defaultTheme.fontFamily.sans],
-        mono: ['"IBM Plex Mono"', ...defaultTheme.fontFamily.mono],
-      },
-      fontSize: {
-        'display': ['3rem', { lineHeight: '1.08', letterSpacing: '-0.02em', fontWeight: '700' }],
-      },
-      borderRadius: {
-        'brand': '8px',
-      },
-      boxShadow: {
-        'brand': '0 4px 14px 0 rgba(139, 92, 246, 0.25)',
-        'brand-lg': '0 10px 40px 0 rgba(139, 92, 246, 0.3)',
-      },
-    },
-  },
-  plugins: [],
+```css
+/* src/app/globals.css (simplified) */
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #8B5CF6;
+  --color-brand-50: #F5F3FF;
+  --color-brand-500: #8B5CF6;
+  --color-brand-600: #7C3AED;
+  --color-brand-700: #6D28D9;
+  /* ... full scale defined in globals.css */
+
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
 ```
+
+Note: Tailwind v4 uses the new opacity syntax (`bg-black/10` not `bg-opacity-10`).
 
 ---
 
@@ -549,7 +522,7 @@ module.exports = {
 > "Bank-level encryption. Zero telemetry. Self-hosted means self-controlled. Your financial life stays private—the way it should be."
 
 **For Developers:**
-> "Docker deployment. PostgreSQL backend. REST API with OpenAPI spec. TypeScript SDK. Extend with our plugin system or build your own integrations."
+> "Docker deployment. SQLite single-file database. TypeScript + Next.js 16. Prisma ORM. Extend with your own tools and integrations."
 
 **For Indie Hackers:**
 > "Track revenue, expenses, and runway. Connect multiple accounts. Export for tax season. Finally, a finance tool that respects your independence."
