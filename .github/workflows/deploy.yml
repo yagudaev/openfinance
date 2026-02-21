@@ -12,14 +12,59 @@ jobs:
   deploy:
     name: Deploy to Coolify
     runs-on: ubuntu-latest
-    needs: []
-    # Only deploy if CI workflow succeeds (GitHub branch protection handles this)
     steps:
-      - name: Deploy to Coolify
-        uses: christophecvb/deploy-coolify-action@v1
-        with:
-          token: ${{ secrets.COOLIFY_API_TOKEN }}
-          domain: ${{ secrets.COOLIFY_DOMAIN }}
-          uuid: ${{ secrets.COOLIFY_APP_UUID }}
-          waitForDeploy: true
-          timeout: 600
+      - name: Trigger deployment
+        id: deploy
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.COOLIFY_DOMAIN }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=false" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Deploy trigger failed with HTTP $http_code"
+            exit 1
+          fi
+
+          echo "Deployment triggered successfully"
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          timeout=600
+          interval=15
+          elapsed=0
+
+          sleep 30  # Give Coolify time to start the build
+
+          while [ $elapsed -lt $timeout ]; do
+            response=$(curl -s \
+              "${{ secrets.COOLIFY_DOMAIN }}/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+              -H "Content-Type: application/json")
+
+            status=$(echo "$response" | jq -r '.status // empty')
+            echo "[$elapsed s] Status: $status"
+
+            if [ "$status" = "running" ]; then
+              echo "Deployment completed successfully!"
+              exit 0
+            fi
+
+            if [ "$status" = "exited" ] || [ "$status" = "error" ]; then
+              echo "::error::Deployment failed with status: $status"
+              exit 1
+            fi
+
+            sleep $interval
+            elapsed=$((elapsed + interval))
+          done
+
+          echo "::error::Deployment timed out after ${timeout}s"
+          exit 1
