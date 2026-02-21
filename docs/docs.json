@@ -1,0 +1,80 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "OpenFinance",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "self-hosting"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/bank-statements",
+              "features/transactions",
+              "features/ai-chat",
+              "features/settings"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/yagudaev/openfinance",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@openfinance.to"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "App",
+      "href": "https://openfinance.to"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/yagudaev/openfinance"
+    }
+  }
+}
