@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { Bar, BarChart, XAxis, YAxis, Cell, ReferenceLine } from 'recharts'
 
 import { ChartConfig, ChartContainer } from '@/components/ui/chart'
-import { formatCurrency, type CashflowDataPoint } from '@/lib/services/dashboard'
+import { formatCurrency, type CashflowDataPoint } from '@/lib/services/dashboard-types'
 
 interface CashflowChartProps {
   data: CashflowDataPoint[]

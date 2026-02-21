@@ -1,37 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns'
 
-export type OwnershipFilter = 'combined' | 'business' | 'personal'
+export type {
+  OwnershipFilter,
+  DashboardStats,
+  CashflowDataPoint,
+  DashboardData,
+} from './dashboard-types'
+export { formatCurrency } from './dashboard-types'
 
-export interface DashboardStats {
-  monthlyIncome: number
-  monthlyExpenses: number
-  prevMonthIncome: number
-  prevMonthExpenses: number
-  changeIncomePercent: number | null
-  changeExpensesPercent: number | null
-}
-
-export interface CashflowDataPoint {
-  monthLabel: string
-  income: number
-  expenses: number
-  cashflow: number
-}
-
-export interface DashboardData {
-  stats: DashboardStats
-  cashflowData: CashflowDataPoint[]
-}
-
-export function formatCurrency(amount: number, currency = 'CAD'): string {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+import type { OwnershipFilter, DashboardStats, CashflowDataPoint, DashboardData } from './dashboard-types'
 
 function calculatePercentChange(current: number, previous: number): number | null {
   if (previous === 0) return current > 0 ? 100 : null
