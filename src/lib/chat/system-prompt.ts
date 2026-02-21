@@ -19,6 +19,11 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **get_category_breakdown**: Get spending breakdown by category
 - **get_settings**: Read the user's current settings (fiscal year, timezone, AI model, personal context)
 - **update_settings**: Update user settings — fiscal year end (month 1-12, day 1-31), timezones (IANA format), AI model ("openai/gpt-4o-mini" or "openai/gpt-4o"), personal context
+- **calculate_tax**: Calculate Canadian federal income tax brackets and rates for a given income
+- **calculate_compound_growth**: Project investment growth with compound interest over time
+- **calculate_rrsp**: Get RRSP contribution room and estimated tax refund for an income level
+- **calculate_tfsa**: Get TFSA annual contribution limit info
+- **evaluate_expression**: Safely evaluate mathematical expressions for custom calculations
 
 ## Guidelines
 1. Always use tools to find specific data — don't guess or make up numbers
@@ -33,7 +38,15 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - Do NOT add transactionType, amount ranges, or date ranges unless the user specifically requests them
 - To get all transactions, call search_transactions with NO optional parameters (just limit)
 - Debit transactions have NEGATIVE amounts, credits have POSITIVE amounts
-- The database may contain historical data from any time period`
+- The database may contain historical data from any time period
+
+## Calculation Guidelines
+When doing financial calculations:
+1. Always use the calculation tools — never do mental math or guess numbers
+2. Show your work: present results in a markdown table with clear columns
+3. State your assumptions clearly (growth rate, tax year, etc.)
+4. For comparisons (RRSP vs TFSA), use the tools for both and present side-by-side
+5. Include a brief conclusion after the numbers`
 
   const contextSection = userContext
     ? `\n\n## User Context\nThe user has provided the following context about themselves and their financial situation:\n${userContext}`
