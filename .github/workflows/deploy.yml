@@ -52,12 +52,12 @@ jobs:
             status=$(echo "$response" | jq -r '.status // empty')
             echo "[$elapsed s] Status: $status"
 
-            if [ "$status" = "running" ]; then
-              echo "Deployment completed successfully!"
+            if echo "$status" | grep -q "^running"; then
+              echo "Deployment completed successfully! (status: $status)"
               exit 0
             fi
 
-            if [ "$status" = "exited" ] || [ "$status" = "error" ]; then
+            if echo "$status" | grep -qE "^(exited|error)"; then
               echo "::error::Deployment failed with status: $status"
               exit 1
             fi
