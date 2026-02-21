@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -9,6 +10,8 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -24,17 +27,35 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   async function handleSignOut() {
     await authClient.signOut()
     window.location.href = '/auth/login'
   }
 
+  function closeMobileMenu() {
+    setMobileMenuOpen(false)
+  }
+
   return (
     <nav className="border-b border-gray-200 bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between">
-          <div className="flex">
+          <div className="flex items-center">
+            <button
+              type="button"
+              className="sm:hidden inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
             <div className="flex shrink-0 items-center">
               <Link
                 href="/dashboard"
@@ -87,6 +108,63 @@ export function Navbar() {
               <LogOut className="h-4 w-4" />
               <span className="hidden md:inline">Sign out</span>
             </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu panel */}
+      <div
+        className={cn(
+          'sm:hidden overflow-hidden transition-all duration-200 ease-in-out',
+          mobileMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0',
+        )}
+      >
+        <div className="border-t border-gray-200 px-4 py-2 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={closeMobileMenu}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+          <div className="border-t border-gray-200 my-1 pt-1">
+            <Link
+              href="/settings"
+              onClick={closeMobileMenu}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/settings')
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                closeMobileMenu()
+                handleSignOut()
+              }}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
           </div>
         </div>
       </div>
