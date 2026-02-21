@@ -25,9 +25,11 @@ import {
   Brain,
   Trash2,
   BookOpen,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
+import { ThreadSidebar } from '@/components/chat/thread-sidebar'
 
 const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> = {
   search_transactions: { label: 'Looking up transactions', icon: Search },
@@ -230,6 +232,8 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isLoadingThread, setIsLoadingThread] = useState(false)
   const threadIdRef = useRef(threadId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounterRef = useRef(0)
@@ -329,6 +333,34 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
     setAttachedFile(null)
   }
 
+  async function handleSelectThread(selectedThreadId: string) {
+    if (selectedThreadId === threadId) return
+
+    setIsLoadingThread(true)
+    try {
+      const res = await fetch(`/api/chat/threads/${selectedThreadId}/messages`)
+      if (!res.ok) {
+        console.error('Failed to load thread messages')
+        return
+      }
+      const data = await res.json()
+
+      const loadedMessages: UIMessage[] = data.messages.map((m: { id: string; role: string; content: string }) => ({
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        parts: [{ type: 'text' as const, text: m.content }],
+      }))
+
+      setThreadId(selectedThreadId)
+      setMessages(loadedMessages)
+      setAttachedFile(null)
+    } catch (error) {
+      console.error('Failed to switch thread:', error)
+    } finally {
+      setIsLoadingThread(false)
+    }
+  }
+
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
@@ -383,197 +415,222 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
   }, [])
 
   return (
-    <div
-      className="relative flex h-[calc(100vh-8rem)] flex-col"
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
-      {/* Drag & drop overlay */}
-      {isDragging && (
-        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-violet-400 bg-violet-50/80">
-          <div className="flex flex-col items-center gap-2">
-            <Upload className="h-10 w-10 text-violet-500" />
-            <p className="text-sm font-medium text-violet-700">Drop file to attach</p>
-          </div>
-        </div>
-      )}
+    <div className="flex h-[calc(100vh-8rem)]">
+      <ThreadSidebar
+        currentThreadId={threadId}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSelectThread={handleSelectThread}
+        onNewThread={handleNewThread}
+      />
 
-      {/* Header with new conversation button */}
-      {messages.length > 0 && (
-        <div className="flex items-center justify-end border-b border-gray-200 px-4 py-2">
+      <div
+        className="relative flex min-w-0 flex-1 flex-col"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {/* Drag & drop overlay */}
+        {isDragging && (
+          <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-violet-400 bg-violet-50/80">
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-10 w-10 text-violet-500" />
+              <p className="text-sm font-medium text-violet-700">Drop file to attach</p>
+            </div>
+          </div>
+        )}
+
+        {/* Loading overlay when switching threads */}
+        {isLoadingThread && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/60">
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+          </div>
+        )}
+
+        {/* Header with sidebar toggle and new conversation button */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
           <button
-            onClick={handleNewThread}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            title="View conversations"
           >
-            <Plus className="h-3.5 w-3.5" />
-            New conversation
+            <PanelLeftOpen className="h-4 w-4" />
           </button>
+          {messages.length > 0 && (
+            <button
+              onClick={handleNewThread}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New conversation
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Messages */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center">
-            <div className="rounded-full bg-violet-100 p-4">
-              <Sparkles className="h-8 w-8 text-violet-600" />
+        {/* Messages */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center">
+              <div className="rounded-full bg-violet-100 p-4">
+                <Sparkles className="h-8 w-8 text-violet-600" />
+              </div>
+              <h2 className="mt-4 text-lg font-semibold text-gray-900">
+                {isNewUser ? 'Welcome to OpenFinance!' : 'Financial AI Assistant'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {isNewUser
+                  ? 'I\'m your personal financial assistant. Let\'s get you set up!'
+                  : 'Ask me anything about your finances.'}
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                {(isNewUser ? ONBOARDING_SUGGESTIONS : SUGGESTIONS).map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => handleSuggestion(suggestion)}
+                    className="rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-gray-900">
-              {isNewUser ? 'Welcome to OpenFinance!' : 'Financial AI Assistant'}
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {isNewUser
-                ? 'I\'m your personal financial assistant. Let\'s get you set up!'
-                : 'Ask me anything about your finances.'}
-            </p>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              {(isNewUser ? ONBOARDING_SUGGESTIONS : SUGGESTIONS).map(suggestion => (
-                <button
-                  key={suggestion}
-                  onClick={() => handleSuggestion(suggestion)}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+          ) : (
+            <div className="space-y-4 p-4">
+              {messages.map(message => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {suggestion}
-                </button>
+                  {message.role === 'assistant' && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100">
+                      <Bot className="h-4 w-4 text-violet-600" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
+                      message.role === 'user'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    {message.parts?.map((part, i) => {
+                      if (part.type === 'text') {
+                        if (message.role === 'assistant') {
+                          return <MarkdownContent key={i} text={part.text} />
+                        }
+                        return (
+                          <div key={i} className="whitespace-pre-wrap">
+                            {part.text}
+                          </div>
+                        )
+                      }
+                      if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
+                        const toolPart = part as {
+                          type: string
+                          toolCallId: string
+                          toolName?: string
+                          state: string
+                          input?: unknown
+                          output?: unknown
+                        }
+                        const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
+                        return (
+                          <ToolCallDisplay
+                            key={i}
+                            toolName={toolName}
+                            state={toolPart.state}
+                            input={toolPart.input}
+                            output={toolPart.output}
+                          />
+                        )
+                      }
+                      return null
+                    })}
+                  </div>
+                  {message.role === 'user' && (
+                    <UserAvatar
+                      name={session?.user?.name}
+                      image={session?.user?.image}
+                    />
+                  )}
+                </div>
               ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 p-4">
-            {messages.map(message => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.role === 'assistant' && (
+              {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                <div className="flex gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100">
                     <Bot className="h-4 w-4 text-violet-600" />
                   </div>
-                )}
-                <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
-                    message.role === 'user'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  {message.parts?.map((part, i) => {
-                    if (part.type === 'text') {
-                      if (message.role === 'assistant') {
-                        return <MarkdownContent key={i} text={part.text} />
-                      }
-                      return (
-                        <div key={i} className="whitespace-pre-wrap">
-                          {part.text}
-                        </div>
-                      )
-                    }
-                    if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
-                      const toolPart = part as {
-                        type: string
-                        toolCallId: string
-                        toolName?: string
-                        state: string
-                        input?: unknown
-                        output?: unknown
-                      }
-                      const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
-                      return (
-                        <ToolCallDisplay
-                          key={i}
-                          toolName={toolName}
-                          state={toolPart.state}
-                          input={toolPart.input}
-                          output={toolPart.output}
-                        />
-                      )
-                    }
-                    return null
-                  })}
+                  <div className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
                 </div>
-                {message.role === 'user' && (
-                  <UserAvatar
-                    name={session?.user?.name}
-                    image={session?.user?.image}
-                  />
-                )}
-              </div>
-            ))}
-            {isLoading && messages[messages.length - 1]?.role === 'user' && (
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100">
-                  <Bot className="h-4 w-4 text-violet-600" />
-                </div>
-                <div className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-        )}
-      </div>
-
-      {/* Sticky bottom input bar */}
-      <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4">
-        {/* Attached file chip */}
-        {attachedFile && (
-          <div className="mb-2 flex items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
-              <FileText className="h-3.5 w-3.5 text-gray-500" />
-              <span className="max-w-48 truncate">{attachedFile.name}</span>
-              <button
-                type="button"
-                onClick={handleRemoveFile}
-                className="ml-0.5 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
+              )}
+              <div ref={bottomRef} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.md,.csv,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={handleAttachClick}
-            disabled={isLoading}
-            className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2.5 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
-            title="Attach file"
-          >
-            <Paperclip className="h-4 w-4" />
-          </button>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask about your finances..."
-            disabled={isLoading}
-            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-violet-300 focus:ring-1 focus:ring-violet-300 disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || isUploading || (!input.trim() && !attachedFile)}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-          >
-            {isLoading || isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Send
-          </button>
-        </form>
+        {/* Sticky bottom input bar */}
+        <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4">
+          {/* Attached file chip */}
+          {attachedFile && (
+            <div className="mb-2 flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
+                <FileText className="h-3.5 w-3.5 text-gray-500" />
+                <span className="max-w-48 truncate">{attachedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="ml-0.5 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.md,.csv,.txt,.jpg,.jpeg,.png,.xlsx,.xls"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handleAttachClick}
+              disabled={isLoading}
+              className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2.5 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
+              title="Attach file"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Ask about your finances..."
+              disabled={isLoading}
+              className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-violet-300 focus:ring-1 focus:ring-violet-300 disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || isUploading || (!input.trim() && !attachedFile)}
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isLoading || isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Send
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

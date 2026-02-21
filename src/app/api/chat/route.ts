@@ -10,6 +10,14 @@ import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 
 export const maxDuration = 120
 
+function generateTitle(text: string): string {
+  const cleaned = text.replace(/\[Attached file:.*?\]/g, '').trim()
+  if (cleaned.length <= 50) return cleaned
+  const truncated = cleaned.slice(0, 50)
+  const lastSpace = truncated.lastIndexOf(' ')
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...'
+}
+
 function getModel(modelId: string) {
   if (modelId.startsWith('openrouter/')) {
     const openrouter = createOpenRouter({
@@ -114,6 +122,18 @@ export async function POST(request: Request) {
               model: modelId,
             },
           })
+
+          // Auto-generate thread title from first user message if not set
+          const thread = await prisma.chatThread.findUnique({
+            where: { id: threadId },
+            select: { title: true },
+          })
+          if (!thread?.title && userMessageText) {
+            await prisma.chatThread.update({
+              where: { id: threadId },
+              data: { title: generateTitle(userMessageText) },
+            })
+          }
         } catch (error) {
           console.error('Failed to save assistant message:', error)
         }
