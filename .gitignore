@@ -23,8 +23,11 @@ src/generated
 
 # Uploads & financial documents
 data/uploads
+
+# Block real financial documents — only allow explicit test fixtures
 *.pdf
 *.csv
+!e2e/fixtures/*.pdf
 
 # Environment
 .env

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80">
+  <defs>
+    <linearGradient id="gnbGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d2137;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="80" fill="url(#gnbGradient)" rx="4"/>
+  <text x="100" y="42" font-family="Georgia, serif" font-size="36" font-weight="bold" fill="#c9a227" text-anchor="middle">GNB</text>
+  <text x="100" y="62" font-family="Arial, sans-serif" font-size="10" fill="#ffffff" text-anchor="middle" letter-spacing="1">GOLIATH NATIONAL BANK</text>
+  <line x1="20" y1="70" x2="180" y2="70" stroke="#c9a227" stroke-width="1"/>
+  <line x1="20" y1="10" x2="180" y2="10" stroke="#c9a227" stroke-width="1"/>
+</svg>
