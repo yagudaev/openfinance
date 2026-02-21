@@ -92,9 +92,10 @@ const SUGGESTIONS = [
 interface ChatInterfaceProps {
   threadId: string
   initialMessages?: UIMessage[]
+  isNewUser?: boolean
 }
 
-export function ChatInterface({ threadId: initialThreadId, initialMessages = [] }: ChatInterfaceProps) {
+export function ChatInterface({ threadId: initialThreadId, initialMessages = [], isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
   const [threadId, setThreadId] = useState(initialThreadId)
   const [input, setInput] = useState('')
@@ -120,12 +121,20 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [] 
   })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [hasTriggeredOnboarding, setHasTriggeredOnboarding] = useState(false)
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (isNewUser && !hasTriggeredOnboarding && messages.length === 0) {
+      setHasTriggeredOnboarding(true)
+      sendMessage({ text: 'Hi! I just signed up. Help me get started with OpenFinance.' })
+    }
+  }, [isNewUser, hasTriggeredOnboarding, messages.length, sendMessage])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

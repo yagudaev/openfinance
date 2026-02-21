@@ -42,7 +42,8 @@ export async function POST(request: Request) {
 
   const modelId = settings?.aiModel ?? 'openrouter/cerebras/auto'
 
-  const systemPrompt = buildSystemPrompt(settings?.aiContext)
+  const isNewUser = !settings?.aiContext
+  const systemPrompt = buildSystemPrompt(settings?.aiContext, isNewUser)
   const tools = createChatTools(session.user.id)
 
   // Save user message to DB if we have a thread

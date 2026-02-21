@@ -1,4 +1,4 @@
-export function buildSystemPrompt(userContext?: string | null): string {
+export function buildSystemPrompt(userContext?: string | null, isNewUser?: boolean): string {
   const today = new Date().toISOString().split('T')[0]
   const basePrompt = `You are a knowledgeable financial advisor embedded in OpenFinance, a personal and business bookkeeping application. You have access to the user's complete transaction history and account information.
 
@@ -48,9 +48,27 @@ When doing financial calculations:
 4. For comparisons (RRSP vs TFSA), use the tools for both and present side-by-side
 5. Include a brief conclusion after the numbers`
 
+  const onboardingSection = isNewUser ? `
+
+## Onboarding Mode
+This is a new user who just signed up. Start a friendly onboarding conversation to understand their needs:
+
+1. Welcome them warmly to OpenFinance
+2. Ask about their financial situation:
+   - Are they tracking personal finances, a business, or both?
+   - What are their main financial goals? (budgeting, tax planning, expense tracking, investment tracking)
+   - What province/state are they in? (for tax calculations)
+   - Any specific financial concerns or questions?
+3. As they answer, use the **update_settings** tool to save their responses as personal context (aiContext field)
+4. After gathering context, suggest next steps:
+   - Upload their first bank statement
+   - Ask any financial questions
+5. Keep the tone conversational and encouraging — this is a chat, not a form
+6. Save all gathered information to aiContext in one go after the conversation using update_settings` : ''
+
   const contextSection = userContext
     ? `\n\n## User Context\nThe user has provided the following context about themselves and their financial situation:\n${userContext}`
     : ''
 
-  return basePrompt + contextSection
+  return basePrompt + onboardingSection + contextSection
 }
