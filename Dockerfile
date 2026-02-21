@@ -34,8 +34,10 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy Prisma CLI for db push at startup
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
+# Install Prisma CLI separately for db push at startup
+# (prisma has deep transitive deps that standalone output doesn't include)
+RUN npm install --no-save --prefix /app/prisma-cli prisma@6.19.2
+
 COPY start.sh ./
 
 # Create data directory for SQLite
