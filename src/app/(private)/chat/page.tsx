@@ -35,6 +35,13 @@ export default async function ChatPage() {
     parts: [{ type: 'text' as const, text: m.content }],
   }))
 
+  const initialTraceIds: Record<string, string> = {}
+  for (const m of thread.messages) {
+    if (m.traceId) {
+      initialTraceIds[m.id] = m.traceId
+    }
+  }
+
   // Check if user needs onboarding (no personal context set and no previous messages)
   const settings = await prisma.userSettings.findUnique({
     where: { userId: session.user.id },
@@ -50,6 +57,7 @@ export default async function ChatPage() {
     <ChatInterface
       threadId={thread.id}
       initialMessages={initialMessages}
+      initialTraceIds={initialTraceIds}
       isNewUser={isNewUser}
     />
   )

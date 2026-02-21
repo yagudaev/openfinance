@@ -32,6 +32,7 @@ export async function GET(
     role: m.role,
     content: m.content,
     createdAt: m.createdAt.toISOString(),
+    traceId: m.traceId,
   }))
 
   return Response.json({ threadId: thread.id, messages })
