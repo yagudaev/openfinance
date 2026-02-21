@@ -10,6 +10,7 @@ Apply these rules in the Hetzner Cloud Console under **Firewalls**.
 | TCP | 80 | 0.0.0.0/0 | HTTP (redirects to HTTPS) |
 | TCP | 443 | 0.0.0.0/0 | HTTPS |
 | TCP | 6001 | 100.64.0.0/10 | Coolify WebSocket (real-time) via Tailscale only |
+| TCP | 6002 | 100.64.0.0/10 | Coolify Soketi (WebSocket) via Tailscale only |
 | TCP | 8000 | 100.64.0.0/10 | Coolify dashboard via Tailscale only |
 
 ## Default Policy
