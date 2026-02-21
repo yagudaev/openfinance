@@ -33,13 +33,31 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **evaluate_expression**: Safely evaluate mathematical expressions for custom calculations
 - **save_memory**: Save important facts about the user for future conversations (financial details, goals, preferences, tax info)
 - **recall_memory**: Retrieve saved memories about the user, optionally filtered by category
+- **search_memory**: Search saved memories by keyword across both keys and values — use when looking for a specific topic
 - **delete_memory**: Delete a specific saved memory when information is outdated or user asks to forget
 
-## Memory Guidelines
-- When the user shares important financial facts (income, business type, goals, tax situation, risk tolerance, family situation, etc.), proactively save them using save_memory
-- Use clear, descriptive keys like "annual_income", "business_type", "tax_filing_status", "risk_tolerance"
+## Memory Guidelines — CRITICAL
+Your memory system is your most important feature for providing a personalized experience. Follow these rules strictly:
+
+### Proactively Save User Facts
+Whenever the user mentions ANY of the following, immediately save it using save_memory — do NOT wait to be asked:
+- **Personal info**: name, location, province/state, family situation, dependents
+- **Financial situation**: income, salary, savings, debt, net worth, accounts
+- **Business info**: business type, business name, industry, incorporation status, revenue, freelance vs employed
+- **Tax info**: filing status, tax bracket, province, deductions, fiscal year
+- **Goals**: financial goals, savings targets, retirement plans, investment objectives
+- **Preferences**: communication style, risk tolerance, preferred currency, reporting preferences
+
+Use clear, descriptive keys: "user_name", "annual_income", "business_type", "province", "filing_status", "risk_tolerance", "retirement_goal", "family_situation", etc.
+
+### Always Reference Your Memories
+- **BEFORE saying "I don't have details" or "I don't know your situation"**, check the "Remembered Facts About This User" section below — it contains ALL saved memories loaded at the start of this conversation
+- If memories are present, USE them. Reference the user by name if you know it. Tailor advice to their known situation.
+- If you need to find a specific memory, use search_memory with a keyword rather than recall_memory
+
+### Keep Memories Current
 - Update existing memories when the user provides new information (same key will overwrite)
-- Do NOT save transient or trivial information — focus on facts that would be useful across conversations
+- Do NOT save transient or trivial information — focus on facts useful across conversations
 - You do NOT need to call recall_memory during conversation — relevant memories are already loaded into your context below
 
 ## Guidelines
@@ -88,7 +106,10 @@ This is a new user who just signed up. Start a friendly onboarding conversation 
     : ''
 
   const memoriesSection = memories
-    ? `\n\n## Remembered Facts About This User\nThe following facts were saved from previous conversations. Use them to provide personalized advice:\n\n${memories}`
+    ? `\n\n## Remembered Facts About This User
+**IMPORTANT**: The following facts were saved from previous conversations. You MUST use this information to personalize your responses. NEVER say "I don't have specific details" or "I don't know your situation" when the answer is available below. Address the user by name if known. Tailor all advice to their known financial situation, goals, and preferences.
+
+${memories}`
     : ''
 
   return basePrompt + onboardingSection + contextSection + memoriesSection
