@@ -6,30 +6,43 @@ OpenFinance is a self-hosted personal finance and bookkeeping app for freelancer
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router) + TypeScript (strict)
-- **Monorepo**: Yarn 4.0.0 workspaces (`apps/`)
-- **Database**: Prisma ORM + SQLite (dev) / PostgreSQL (prod) — lives in `apps/web`
+- **Framework**: Next.js 15 (App Router) + TypeScript (strict)
+- **Database**: Prisma ORM + SQLite (`prisma/data/openfinance.db`)
+- **Auth**: BetterAuth (email/password + sessions)
 - **Styling**: Tailwind CSS v4 + shadcn/ui
-- **Package Manager**: Yarn (NEVER npm)
+- **Package Manager**: Yarn 4.0.0 (NEVER npm)
 
-## Workspaces
+## Structure
 
-| Workspace | Path | Port |
-|-----------|------|------|
-| `@openfinance/web` | `apps/web` | 3000 |
-| `@openfinance/marketing` | `apps/marketing` | 3001 |
+Single Next.js app (no monorepo):
+
+```
+openfinance/
+├── prisma/schema.prisma      # Database schema
+├── src/
+│   ├── app/                  # Next.js App Router
+│   │   ├── api/              # API routes
+│   │   ├── auth/             # Auth pages
+│   │   └── (private)/        # Protected routes
+│   ├── components/           # React components
+│   │   └── ui/               # shadcn/ui base components
+│   ├── lib/                  # Utilities, DB client, services
+│   ├── hooks/                # Custom React hooks
+│   └── types/                # TypeScript types
+├── public/
+└── server-setup/             # Server provisioning scripts
+```
 
 ## Commands
 
 ```bash
-yarn install              # Install dependencies
-yarn dev                  # Run web app (turbopack)
-yarn dev:marketing        # Run marketing site
-yarn build                # Build all workspaces
-yarn lint                 # Lint all workspaces
+yarn dev                  # Run dev server (turbopack)
+yarn build                # Production build
+yarn lint                 # Lint
 yarn db:push              # Push Prisma schema to DB
 yarn db:studio            # Open Prisma Studio
 yarn db:generate          # Generate Prisma client
+yarn db:migrate           # Run Prisma migrations
 ```
 
 ## Code Style
