@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const publicPaths = ['/auth/login', '/auth/sign-up', '/api/auth', '/test-statement']
+const publicPrefixes = ['/auth/login', '/auth/sign-up', '/api/auth', '/test-statement']
+const publicExact = ['/']
 
 function isPublicPath(pathname: string) {
-  return publicPaths.some((path) => pathname.startsWith(path))
+  if (publicExact.includes(pathname)) return true
+  return publicPrefixes.some((path) => pathname.startsWith(path))
 }
 
 export function middleware(request: NextRequest) {
