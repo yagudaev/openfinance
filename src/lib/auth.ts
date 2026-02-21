@@ -4,6 +4,10 @@ import { nextCookies } from 'better-auth/next-js'
 
 import { prisma } from '@/lib/prisma'
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+const isGoogleEnabled = !!(googleClientId && googleClientSecret)
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'sqlite',
@@ -14,6 +18,15 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
+
+  ...(isGoogleEnabled && {
+    socialProviders: {
+      google: {
+        clientId: googleClientId!,
+        clientSecret: googleClientSecret!,
+      },
+    },
+  }),
 
   session: {
     expiresIn: 60 * 60 * 24 * 7,
