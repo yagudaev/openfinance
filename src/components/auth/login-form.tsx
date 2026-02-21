@@ -81,7 +81,7 @@ export function LoginForm({
       return
     }
 
-    router.push('/dashboard')
+    router.push('/chat')
   }
 
   async function handleGoogleLogin() {
@@ -90,7 +90,7 @@ export function LoginForm({
 
     await authClient.signIn.social({
       provider: 'google',
-      callbackURL: '/dashboard',
+      callbackURL: '/chat',
     })
   }
 

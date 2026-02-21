@@ -20,10 +20,10 @@ import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
 
 const navItems = [
-  { href: '/dashboard', label: 'Home', icon: Home },
+  { href: '/chat', label: 'Home', icon: MessageSquare },
+  { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/statements', label: 'Statements', icon: FileText },
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
 ]
 
 export function Navbar() {
@@ -60,7 +60,7 @@ export function Navbar() {
             </button>
             <div className="flex shrink-0 items-center">
               <Link
-                href="/dashboard"
+                href="/chat"
                 className="flex items-center gap-2"
               >
                 <span className="text-xl font-semibold text-gray-900 font-heading">

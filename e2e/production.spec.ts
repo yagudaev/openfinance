@@ -32,8 +32,8 @@ test.describe('Production Deployment', () => {
     await page.getByLabel('Repeat Password').fill(prodPassword)
     await page.getByRole('button', { name: 'Sign up', exact: true }).click()
 
-    // Should arrive at dashboard
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+    // Should arrive at chat (home page)
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
     await expect(page.getByText('OpenFinance')).toBeVisible()
 
     // Navigate to each page
@@ -43,7 +43,7 @@ test.describe('Production Deployment', () => {
     await page.getByRole('link', { name: 'Statements' }).click()
     await expect(page).toHaveURL(/\/statements/)
 
-    await page.getByRole('link', { name: 'Chat' }).click()
+    await page.getByRole('link', { name: 'Home' }).click()
     await expect(page).toHaveURL(/\/chat/)
 
     await page.goto(`${PROD_URL}/settings`)

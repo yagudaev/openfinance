@@ -68,8 +68,8 @@ test.describe('Auth Flow', () => {
     await page.getByLabel('Repeat Password').fill(TEST_USER.password)
     await page.getByRole('button', { name: 'Sign up', exact: true }).click()
 
-    // Should redirect to dashboard after sign up
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+    // Should redirect to chat after sign up
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
     await expect(page.getByText('OpenFinance')).toBeVisible()
 
     // Sign out
@@ -81,7 +81,7 @@ test.describe('Auth Flow', () => {
     await page.getByLabel('Password').fill(TEST_USER.password)
     await page.getByRole('button', { name: 'Login' }).click()
 
-    // Should redirect to dashboard after login
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+    // Should redirect to chat after login
+    await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
   })
 })
