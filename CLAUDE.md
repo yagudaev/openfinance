@@ -18,7 +18,9 @@ Single Next.js app (no monorepo):
 
 ```
 openfinance/
-├── prisma/schema.prisma      # Database schema
+├── prisma/
+│   ├── schema.prisma         # Database schema
+│   └── migrations/           # Migration history
 ├── src/
 │   ├── app/                  # Next.js App Router
 │   │   ├── api/              # API routes
@@ -39,10 +41,11 @@ openfinance/
 yarn dev                  # Run dev server (turbopack)
 yarn build                # Production build
 yarn lint                 # Lint
-yarn db:push              # Push Prisma schema to DB
+yarn db:migrate           # Create & apply migrations (dev)
+yarn db:migrate:deploy    # Apply pending migrations (prod)
+yarn db:push              # Push schema directly (no migration history)
 yarn db:studio            # Open Prisma Studio
 yarn db:generate          # Generate Prisma client
-yarn db:migrate           # Run Prisma migrations
 ```
 
 ## Code Style
