@@ -214,8 +214,14 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
               onChange={e => setSettings(prev => ({ ...prev, aiModel: e.target.value }))}
               className="mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
             >
-              <option value="openai/gpt-4o-mini">GPT-4o Mini (default)</option>
-              <option value="openai/gpt-4o">GPT-4o</option>
+              <optgroup label="OpenRouter">
+                <option value="openrouter/cerebras/auto">Cerebras Auto (fastest)</option>
+                <option value="openrouter/google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+              </optgroup>
+              <optgroup label="OpenAI">
+                <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                <option value="openai/gpt-4o">GPT-4o</option>
+              </optgroup>
             </select>
           </div>
           <div>

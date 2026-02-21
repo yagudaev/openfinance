@@ -1008,6 +1008,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openrouter/ai-sdk-provider@npm:^2.2.3":
+  version: 2.2.3
+  resolution: "@openrouter/ai-sdk-provider@npm:2.2.3"
+  peerDependencies:
+    ai: ^6.0.0
+    zod: ^3.25.0 || ^4.0.0
+  checksum: d3b6cb9a8bc4df4c22ccbff13932ef25b3999b74abe9aa38d0d9de9e7ae6f69f4b0b6129c9ad13a0f901f068d4e67b7e8ce69a5cf63187bdb4c85608e359f149
+  languageName: node
+  linkType: hard
+
 "@opentelemetry/api@npm:1.9.0":
   version: 1.9.0
   resolution: "@opentelemetry/api@npm:1.9.0"
@@ -5807,6 +5817,7 @@ __metadata:
   dependencies:
     "@ai-sdk/openai": "npm:^3.0.30"
     "@ai-sdk/react": "npm:^3.0.99"
+    "@openrouter/ai-sdk-provider": "npm:^2.2.3"
     "@playwright/test": "npm:^1.58.2"
     "@prisma/adapter-better-sqlite3": "npm:^7.4.1"
     "@prisma/client": "npm:^7.4.1"

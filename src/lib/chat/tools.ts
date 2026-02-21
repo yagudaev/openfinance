@@ -231,13 +231,13 @@ export function createChatTools(userId: string) {
     }),
 
     update_settings: tool({
-      description: 'Update user settings. Only pass the fields you want to change. Valid AI models: "openai/gpt-4o-mini", "openai/gpt-4o". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
+      description: 'Update user settings. Only pass the fields you want to change. Valid AI models: "openai/gpt-4o-mini", "openai/gpt-4o", "openrouter/cerebras/auto", "openrouter/google/gemini-2.5-flash-preview". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
       inputSchema: z.object({
         fiscalYearEndMonth: z.number().min(1).max(12).optional().describe('Fiscal year end month (1=January, 12=December)'),
         fiscalYearEndDay: z.number().min(1).max(31).optional().describe('Fiscal year end day'),
         bankTimezone: z.string().optional().describe('Bank timezone in IANA format (e.g. America/Vancouver)'),
         userTimezone: z.string().optional().describe('Display timezone in IANA format (e.g. America/Toronto)'),
-        aiModel: z.string().optional().describe('AI model: "openai/gpt-4o-mini" or "openai/gpt-4o"'),
+        aiModel: z.string().optional().describe('AI model identifier (e.g. "openrouter/cerebras/auto", "openai/gpt-4o-mini")'),
         aiContext: z.string().optional().describe('Personal context about the user for better AI responses'),
       }),
       execute: async (params) => {
@@ -248,8 +248,14 @@ export function createChatTools(userId: string) {
           if (params.bankTimezone !== undefined) data.bankTimezone = params.bankTimezone
           if (params.userTimezone !== undefined) data.userTimezone = params.userTimezone
           if (params.aiModel !== undefined) {
-            if (!['openai/gpt-4o-mini', 'openai/gpt-4o'].includes(params.aiModel)) {
-              return { error: 'Invalid AI model. Must be "openai/gpt-4o-mini" or "openai/gpt-4o".' }
+            const validModels = [
+              'openai/gpt-4o-mini',
+              'openai/gpt-4o',
+              'openrouter/cerebras/auto',
+              'openrouter/google/gemini-2.5-flash-preview',
+            ]
+            if (!validModels.includes(params.aiModel)) {
+              return { error: `Invalid AI model. Must be one of: ${validModels.join(', ')}` }
             }
             data.aiModel = params.aiModel
           }
