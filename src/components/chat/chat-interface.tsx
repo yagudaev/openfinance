@@ -48,6 +48,7 @@ const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> 
   recall_memory: { label: 'Recalling memories', icon: BookOpen },
   search_memory: { label: 'Searching memories', icon: Search },
   delete_memory: { label: 'Forgetting memory', icon: Trash2 },
+  read_file: { label: 'Reading file...', icon: FileText },
   process_statements: { label: 'Processing bank statements...', icon: FileText },
 }
 

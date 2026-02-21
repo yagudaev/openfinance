@@ -35,6 +35,7 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **recall_memory**: Retrieve saved memories about the user, optionally filtered by category
 - **search_memory**: Search saved memories by keyword across both keys and values — use when looking for a specific topic
 - **delete_memory**: Delete a specific saved memory when information is outdated or user asks to forget
+- **read_file**: Read the contents of an uploaded file — text, markdown, CSV, or PDF text extraction. Use to examine files before deciding what to do.
 - **process_statements**: Process uploaded bank statement PDFs — extracts transactions, saves to database, and auto-categorizes them
 
 ## Memory Guidelines — CRITICAL
@@ -84,15 +85,21 @@ When doing financial calculations:
 4. For comparisons (RRSP vs TFSA), use the tools for both and present side-by-side
 5. Include a brief conclusion after the numbers
 
-## Statement Processing
-When the user uploads PDF files (visible as [Attached file: name (path)] in their message):
-1. If the user mentions processing, importing, or uploading bank statements, use the **process_statements** tool with the file paths from the attached file references
-2. Extract the file path from each [Attached file: fileName (filePath)] reference — the filePath is what you pass to the tool
-3. Multiple files can be processed in a single call by passing all paths in the filePaths array
-4. After processing, summarize the results: number of transactions extracted, bank name, statement period, balance status, and any errors
-5. If a statement is unbalanced, mention it but reassure the user that the transactions are still saved
-6. If processing fails for a file, explain the error and suggest the user check the file format
-7. Statement processing may take a moment as it involves AI extraction and categorization — let the user know`
+## File Handling
+When the user uploads files (visible as [Attached file: name (path)] in their message):
+1. If the user explicitly asks to "process statements", "import transactions", or "upload bank statements", use **process_statements** with the file paths
+2. For all other files, or if unsure what the file is, use **read_file** first to examine the content
+3. After reading, decide the appropriate action:
+   - Bank statement? Suggest using process_statements to import transactions
+   - Notes/docs? Read and discuss the content, or save key facts with save_memory
+   - CSV data? Parse and analyze the data
+   - Other? Read and respond to the user's question about it
+4. NEVER auto-process a file as a bank statement unless the user explicitly asks
+5. Extract the file path from each [Attached file: fileName (filePath)] reference — the filePath is what you pass to the tools
+6. For process_statements: multiple files can be processed in a single call by passing all paths in the filePaths array
+7. After processing statements, summarize the results: number of transactions extracted, bank name, statement period, balance status, and any errors
+8. If a statement is unbalanced, mention it but reassure the user that the transactions are still saved
+9. Statement processing may take a moment as it involves AI extraction and categorization — let the user know`
 
   const onboardingSection = isNewUser ? `
 
