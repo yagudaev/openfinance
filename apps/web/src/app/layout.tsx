@@ -31,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={\`\${spaceGrotesk.variable} \${ibmPlexSans.variable} \${ibmPlexMono.variable} font-body antialiased\`}>
+      <body className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} font-body antialiased`}>
         {children}
       </body>
     </html>
