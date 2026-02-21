@@ -1,12 +1,22 @@
 import { convertToModelMessages, streamText, UIMessage, stepCountIs } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import {
+  observe,
+  updateActiveObservation,
+  updateActiveTrace,
+  getActiveTraceId,
+} from '@langfuse/tracing'
+import { trace } from '@opentelemetry/api'
+import { after } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
+import { langfuseSpanProcessor } from '@/instrumentation'
 
 export const maxDuration = 120
 
@@ -37,7 +47,7 @@ function extractTextContent(message: UIMessage): string {
     .join('\n') ?? ''
 }
 
-export async function POST(request: Request) {
+const handler = async (request: Request) => {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
@@ -93,6 +103,18 @@ export async function POST(request: Request) {
   const lastUserMessage = messages.filter(m => m.role === 'user').pop()
   const userMessageText = lastUserMessage ? extractTextContent(lastUserMessage) : undefined
 
+  // Set Langfuse trace context
+  updateActiveObservation({
+    input: userMessageText,
+  })
+
+  updateActiveTrace({
+    name: 'chat-message',
+    sessionId: threadId,
+    userId: session.user.id,
+    input: userMessageText,
+  })
+
   const startTime = Date.now()
 
   const result = streamText({
@@ -101,8 +123,12 @@ export async function POST(request: Request) {
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5),
+    experimental_telemetry: { isEnabled: true },
     onFinish: async ({ text, response, steps, totalUsage, finishReason }) => {
       const latencyMs = Date.now() - startTime
+
+      // Get the Langfuse trace ID from the active span
+      const traceId = getActiveTraceId()
 
       // Save assistant message to thread
       if (threadId) {
@@ -120,6 +146,7 @@ export async function POST(request: Request) {
               content: text || '',
               toolCalls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
               model: modelId,
+              traceId: traceId ?? null,
             },
           })
 
@@ -178,8 +205,28 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error('Failed to save chat trace:', error)
       }
+
+      // Update Langfuse trace with output after stream completes
+      updateActiveObservation({
+        output: text,
+      })
+      updateActiveTrace({
+        output: text,
+      })
+
+      // End the span manually since streaming keeps it open
+      trace.getActiveSpan()?.end()
     },
   })
 
+  // Flush Langfuse traces after the response is sent (critical for serverless)
+  after(async () => await langfuseSpanProcessor.forceFlush())
+
   return result.toUIMessageStreamResponse()
 }
+
+// Wrap handler with observe() to create a Langfuse trace
+export const POST = observe(handler, {
+  name: 'handle-chat-message',
+  endOnExit: false, // Don't end observation until stream finishes
+})
