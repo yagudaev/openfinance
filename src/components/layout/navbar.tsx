@@ -15,8 +15,9 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { authClient } from '@/lib/auth-client'
+import { authClient, useSession } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/user-avatar'
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -28,6 +29,7 @@ const navItems = [
 export function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { data: session } = useSession()
 
   async function handleSignOut() {
     await authClient.signOut()
@@ -89,16 +91,12 @@ export function Navbar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <Link href="/settings">
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
+            <Link href="/settings" className="rounded-full transition-opacity hover:opacity-80">
+              <UserAvatar
+                name={session?.user?.name}
+                image={session?.user?.image}
+              />
+            </Link>
             <Button
               variant="ghost"
               size="sm"
