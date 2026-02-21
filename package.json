@@ -10,7 +10,10 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:prod": "BASE_URL=https://openfinance.to playwright test e2e/production.spec.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.30",
@@ -38,6 +41,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
