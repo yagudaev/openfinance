@@ -18,6 +18,9 @@ build
 *.db
 *.db-journal
 
+# Uploads
+data/uploads
+
 # Environment
 .env
 .env.local

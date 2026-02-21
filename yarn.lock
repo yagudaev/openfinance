@@ -4762,6 +4762,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openai@npm:^6.22.0":
+  version: 6.22.0
+  resolution: "openai@npm:6.22.0"
+  peerDependencies:
+    ws: ^8.18.0
+    zod: ^3.25 || ^4.0
+  peerDependenciesMeta:
+    ws:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    openai: bin/cli
+  checksum: b0dcfce1fcaa84b9c92a00745fcd1bfa7573002d50e7a32dfe91b6e0acd6e950814891cef79de31f406f0454c6042baceb7c3843d9beadbd57148fbe42111a6f
+  languageName: node
+  linkType: hard
+
 "openfinance@workspace:.":
   version: 0.0.0-use.local
   resolution: "openfinance@workspace:."
@@ -4784,6 +4801,7 @@ __metadata:
     eslint-config-next: "npm:^16.2.0-canary.56"
     lucide-react: "npm:^0.400.0"
     next: "npm:^16.2.0-canary.56"
+    openai: "npm:^6.22.0"
     postcss: "npm:^8.0.0"
     prisma: "npm:^6.0.0"
     react: "npm:19.3.0-canary-ab18f33d-20260220"
@@ -4793,6 +4811,8 @@ __metadata:
     tailwind-merge: "npm:^2.5.0"
     tailwindcss: "npm:^4.0.0"
     typescript: "npm:^5.0.0"
+    unpdf: "npm:^1.4.0"
+    zod: "npm:^4.3.6"
   languageName: unknown
   linkType: soft
 
@@ -5892,6 +5912,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"unpdf@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "unpdf@npm:1.4.0"
+  peerDependencies:
+    "@napi-rs/canvas": ^0.1.69
+  peerDependenciesMeta:
+    "@napi-rs/canvas":
+      optional: true
+  checksum: dd248e26c79b12d8a2e68f3f8d959f42d6d0bb14878928d2601bbb56da6d0ba0f207d14dffe64028cdd9afc228b8c11b3af08655dad19717a8cec7072b8942c8
+  languageName: node
+  linkType: hard
+
 "unrs-resolver@npm:^1.6.2":
   version: 1.11.1
   resolution: "unrs-resolver@npm:1.11.1"
@@ -6146,7 +6178,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.25.0 || ^4.0.0, zod@npm:^4.3.5":
+"zod@npm:^3.25.0 || ^4.0.0, zod@npm:^4.3.5, zod@npm:^4.3.6":
   version: 4.3.6
   resolution: "zod@npm:4.3.6"
   checksum: 860d25a81ab41d33aa25f8d0d07b091a04acb426e605f396227a796e9e800c44723ed96d0f53a512b57be3d1520f45bf69c0cb3b378a232a00787a2609625307
