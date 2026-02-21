@@ -36,8 +36,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/generated ./src/generated
 
-# Install Prisma CLI + SQLite adapter for migrations at startup
-RUN npm install --no-save prisma@7.4.1 @prisma/adapter-better-sqlite3@7.4.1
+# Install Prisma CLI + SQLite adapter for migrations at startup (isolated prefix to avoid peer dep conflicts)
+RUN npm install --no-save --prefix /app/prisma-cli prisma@7.4.1 @prisma/adapter-better-sqlite3@7.4.1 \
+    && ln -s /app/prisma-cli/node_modules/prisma /app/node_modules/prisma
 
 COPY start.sh ./
 
