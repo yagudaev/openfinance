@@ -21,22 +21,29 @@ import {
   Upload,
   Wrench,
   CheckCircle2,
+  ChevronDown,
+  Brain,
+  Trash2,
+  BookOpen,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
 
 const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> = {
-  search_transactions: { label: 'Search Transactions', icon: Search },
-  get_account_summary: { label: 'Account Summary', icon: DollarSign },
-  get_cashflow: { label: 'Cashflow', icon: TrendingUp },
-  get_category_breakdown: { label: 'Category Breakdown', icon: PieChart },
-  get_settings: { label: 'Settings', icon: Settings },
-  update_settings: { label: 'Update Settings', icon: Settings },
-  calculate_tax: { label: 'Calculate Tax', icon: Calculator },
-  calculate_compound_growth: { label: 'Compound Growth', icon: TrendingUp },
-  calculate_rrsp: { label: 'RRSP Calculator', icon: Calculator },
-  calculate_tfsa: { label: 'TFSA Info', icon: Calculator },
-  evaluate_expression: { label: 'Calculate', icon: Calculator },
+  search_transactions: { label: 'Looking up transactions', icon: Search },
+  get_account_summary: { label: 'Fetching account summary', icon: DollarSign },
+  get_cashflow: { label: 'Calculating cashflow', icon: TrendingUp },
+  get_category_breakdown: { label: 'Analyzing categories', icon: PieChart },
+  get_settings: { label: 'Reading settings', icon: Settings },
+  update_settings: { label: 'Updating settings', icon: Settings },
+  calculate_tax: { label: 'Calculating tax', icon: Calculator },
+  calculate_compound_growth: { label: 'Projecting compound growth', icon: TrendingUp },
+  calculate_rrsp: { label: 'Calculating RRSP', icon: Calculator },
+  calculate_tfsa: { label: 'Looking up TFSA info', icon: Calculator },
+  evaluate_expression: { label: 'Calculating', icon: Calculator },
+  save_memory: { label: 'Saving to memory', icon: Brain },
+  recall_memory: { label: 'Recalling memories', icon: BookOpen },
+  delete_memory: { label: 'Forgetting memory', icon: Trash2 },
 }
 
 function getToolDisplay(toolName: string | undefined) {
@@ -122,18 +129,73 @@ function MarkdownContent({ text }: { text: string }) {
   return <>{elements}</>
 }
 
-function ToolCallDisplay({ toolName, state }: { toolName?: string; state: string }) {
+function formatToolData(data: unknown): string {
+  if (data === undefined || data === null) return ''
+  if (typeof data === 'string') return data
+  try {
+    return JSON.stringify(data, null, 2)
+  } catch {
+    return String(data)
+  }
+}
+
+interface ToolCallDisplayProps {
+  toolName?: string
+  state: string
+  input?: unknown
+  output?: unknown
+}
+
+function ToolCallDisplay({ toolName, state, input, output }: ToolCallDisplayProps) {
+  const [expanded, setExpanded] = useState(false)
   const { label, icon: Icon } = getToolDisplay(toolName)
   const isDone = state === 'output-available'
+  const isError = state === 'output-error'
+  const hasDetails = (input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0) || output !== undefined
+
+  function handleToggle() {
+    if (hasDetails) setExpanded(prev => !prev)
+  }
 
   return (
-    <div className="my-1 flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-      <span className="font-medium text-gray-700">{label}</span>
-      {isDone ? (
-        <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500" />
-      ) : (
-        <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin text-gray-400" />
+    <div className="my-1 overflow-hidden rounded-md border border-gray-200 bg-white text-xs">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-gray-500 ${hasDetails ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'}`}
+      >
+        <Icon className="h-3.5 w-3.5 shrink-0 text-violet-500" />
+        <span className="font-medium text-gray-700">{label}</span>
+        {isDone ? (
+          <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
+        ) : isError ? (
+          <X className="ml-auto h-3.5 w-3.5 shrink-0 text-red-500" />
+        ) : (
+          <Loader2 className="ml-auto h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />
+        )}
+        {hasDetails && (
+          <ChevronDown className={`h-3 w-3 shrink-0 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        )}
+      </button>
+      {expanded && hasDetails && (
+        <div className="border-t border-gray-100 px-3 py-2 text-[11px]">
+          {input !== undefined && input !== null && Object.keys(input as Record<string, unknown>).length > 0 && (
+            <div className="mb-1.5">
+              <span className="font-semibold text-gray-500">Args</span>
+              <pre className="mt-0.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
+                {formatToolData(input)}
+              </pre>
+            </div>
+          )}
+          {output !== undefined && (
+            <div>
+              <span className="font-semibold text-gray-500">Result</span>
+              <pre className="mt-0.5 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-1.5 text-gray-600">
+                {formatToolData(output)}
+              </pre>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -407,13 +469,23 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
                         </div>
                       )
                     }
-                    if (part.type?.startsWith('tool-')) {
-                      const toolPart = part as { type: string; toolCallId: string; toolName?: string; state: string }
+                    if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
+                      const toolPart = part as {
+                        type: string
+                        toolCallId: string
+                        toolName?: string
+                        state: string
+                        input?: unknown
+                        output?: unknown
+                      }
+                      const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
                       return (
                         <ToolCallDisplay
                           key={i}
-                          toolName={toolPart.toolName}
+                          toolName={toolName}
                           state={toolPart.state}
+                          input={toolPart.input}
+                          output={toolPart.output}
                         />
                       )
                     }
