@@ -65,30 +65,30 @@ module.exports = {
 | Component folders | **camelCase** | `components/ui/`, `components/dialogs/` |
 | Route folders | **kebab-case** or **[param]** | `(requireAuth)/`, `[id]/` |
 
-### Monorepo Structure
+### Project Structure
+
+OpenFinance is a single Next.js app (no monorepo):
 
 ```
-project-root/
-├── desktop/           # Desktop app (Electron)
-├── mobile/            # Mobile app (React Native/Expo)
-├── shared/            # Shared utilities and components
-├── web-extension/     # Browser extension
-├── website/           # Main Next.js application
-│   └── src/
-│       ├── app/       # Next.js App Router pages
-│       │   ├── api/   # API routes
-│       │   └── (requireAuth)/  # Protected routes
-│       ├── components/
-│       │   ├── ui/    # Base UI components (shadcn/ui)
-│       │   └── dialogs/
-│       ├── hooks/     # Custom React hooks
-│       ├── lib/       # Utilities and helpers
-│       │   ├── actions/  # Server actions
-│       │   └── streaming/
-│       ├── models/    # Data models (DB queries)
-│       ├── services/  # Service layer (business logic)
-│       └── types.ts   # Type definitions
-└── requirements/      # PRDs and implementation plans
+openfinance/
+├── src/
+│   ├── app/              # Next.js App Router
+│   │   ├── api/          # API routes
+│   │   ├── auth/         # Auth pages
+│   │   └── (private)/    # Protected routes
+│   ├── components/
+│   │   └── ui/           # shadcn/ui base components
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utilities, DB client, services
+│   │   ├── chat/         # AI chat tools and prompts
+│   │   ├── services/     # Business logic (statement processor, etc.)
+│   │   ├── constants/
+│   │   └── utils/
+│   └── types/            # TypeScript types
+├── prisma/               # Schema and migrations
+├── docs/                 # Mintlify documentation site
+├── e2e/                  # Playwright E2E tests
+└── server-setup/         # Server provisioning scripts
 ```
 
 ---

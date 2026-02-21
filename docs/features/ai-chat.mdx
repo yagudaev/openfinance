@@ -40,7 +40,7 @@ The AI advisor can answer questions about your financial data:
 
 ## Available Tools
 
-The AI has access to four tools that let it query your data in real-time:
+The AI has access to six tools that let it query and update your data in real-time:
 
 | Tool | Description |
 |------|-------------|
@@ -48,6 +48,8 @@ The AI has access to four tools that let it query your data in real-time:
 | `get_account_summary` | Get a summary of all bank accounts with their latest balances |
 | `get_cashflow` | Calculate income vs. expenses for any date range |
 | `get_category_breakdown` | Get a breakdown of spending by category for any period |
+| `get_settings` | Read current user settings (fiscal year, timezone, AI model, context) |
+| `update_settings` | Modify user settings via natural language (e.g., "change my fiscal year to March 31") |
 
 The AI automatically selects the right tool based on your question. It can chain multiple tool calls together for complex queries.
 

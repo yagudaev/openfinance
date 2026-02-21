@@ -8,7 +8,7 @@ OpenFinance is a self-hosted personal finance and bookkeeping app for freelancer
 
 - **Framework**: Next.js 16 (App Router, Turbopack) + TypeScript (strict)
 - **Database**: Prisma 7 ORM + SQLite via `@prisma/adapter-better-sqlite3` driver adapter
-- **Auth**: BetterAuth (email/password + sessions)
+- **Auth**: BetterAuth (email/password + Google OAuth)
 - **Styling**: Tailwind CSS v4 + shadcn/ui
 - **Package Manager**: Yarn 4.0.0 (NEVER npm)
 
