@@ -8,7 +8,7 @@ import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 function getModel(modelId: string) {
   if (modelId.startsWith('openrouter/')) {
