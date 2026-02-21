@@ -8,10 +8,14 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 const isGoogleEnabled = !!(googleClientId && googleClientSecret)
 
+const betterAuthUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000'
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'sqlite',
   }),
+
+  trustedOrigins: [betterAuthUrl],
 
   emailAndPassword: {
     enabled: true,

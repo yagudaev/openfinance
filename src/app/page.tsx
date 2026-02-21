@@ -9,23 +9,28 @@ import {
   Github,
   Star,
 } from 'lucide-react'
+import { headers } from 'next/headers'
 
 import { Button } from '@/components/ui/button'
+import { auth } from '@/lib/auth'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  const isLoggedIn = !!session
+
   return (
     <div className="min-h-screen bg-background">
-      <Nav />
-      <Hero />
+      <Nav isLoggedIn={isLoggedIn} />
+      <Hero isLoggedIn={isLoggedIn} />
       <Features />
       <DeveloperExperience />
-      <CallToAction />
+      <CallToAction isLoggedIn={isLoggedIn} />
       <Footer />
     </div>
   )
 }
 
-function Nav() {
+function Nav({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <nav className="border-b border-border/50">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -33,19 +38,30 @@ function Nav() {
           OpenFinance
         </Link>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/auth/login">Sign in</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/auth/sign-up">Get Started</Link>
-          </Button>
+          {isLoggedIn ? (
+            <Button size="sm" className="gap-2" asChild>
+              <Link href="/dashboard">
+                Go to Dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/auth/login">Sign in</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/auth/sign-up">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </nav>
   )
 }
 
-function Hero() {
+function Hero({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <section className="px-6 pt-20 pb-16 text-center">
       <div className="mx-auto max-w-3xl">
@@ -70,8 +86,8 @@ function Hero() {
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button size="lg" className="gap-2" asChild>
-            <Link href="/auth/sign-up">
-              Deploy in 5 minutes
+            <Link href={isLoggedIn ? '/dashboard' : '/auth/sign-up'}>
+              {isLoggedIn ? 'Go to Dashboard' : 'Deploy in 5 minutes'}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -284,7 +300,7 @@ function DeveloperExperience() {
   )
 }
 
-function CallToAction() {
+function CallToAction({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <section className="bg-primary px-6 py-20 text-center text-primary-foreground">
       <div className="mx-auto max-w-2xl">
@@ -302,8 +318,8 @@ function CallToAction() {
             className="gap-2"
             asChild
           >
-            <Link href="/auth/sign-up">
-              Get started for free
+            <Link href={isLoggedIn ? '/dashboard' : '/auth/sign-up'}>
+              {isLoggedIn ? 'Go to Dashboard' : 'Get started for free'}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
