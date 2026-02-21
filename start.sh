@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-node /app/prisma-cli/node_modules/prisma/build/index.js db push --skip-generate
+node /app/prisma-cli/node_modules/prisma/build/index.js db push
 echo "Database ready."
 
 exec node server.js

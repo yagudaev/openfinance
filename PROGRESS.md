@@ -11,17 +11,22 @@
 - [x] App shell + navbar — 2026-02-20 23:50 — Protected layout, top navbar with all routes
 - [x] Tailwind CSS v4 + PostCSS — 2026-02-20 23:52 — Brand colors working (The Blueprint identity)
 - [x] Upgrade to Next.js 16 — 2026-02-20 23:55 — Next 16.2.0-canary.56 + React 19.3.0
-- [x] Playwright test — 2026-02-20 23:56 — Sign up flow works, redirects to dashboard, navbar renders
-
-## In Progress
-- [ ] Phase 2: Dashboard with cashflow chart + stats
-- [ ] Phase 2: Statement upload + AI processing
+- [x] Phase 2: Dashboard with cashflow chart + stats — 2026-02-21
+- [x] Phase 2: Statement upload + AI processing — 2026-02-21
+- [x] Phase 2: Transaction list with filters — 2026-02-21
+- [x] Phase 2: Statement verification view — 2026-02-21
+- [x] Phase 3: AI Chat — 2026-02-21
+- [x] Phase 4: Settings page — 2026-02-21
+- [x] Server setup scripts + SSH + .env.example — 2026-02-21
+- [x] Fix Docker build (Prisma + Yarn PnP issue) — 2026-02-21
+- [x] Deploy to Coolify with SSL — 2026-02-21 — Live at https://openfinance.to
+- [x] Playwright tests — 2026-02-21 — 17 tests (7 auth, 2 dashboard, 5 navigation, 3 production), all passing
+- [x] Upgrade Prisma v6 → v7.4.1 — 2026-02-21 — New driver adapter (better-sqlite3), prisma.config.ts, generated client output, ESM-compatible
 
 ## Blocked
 - [ ] Linear tracking — Nano3labs workspace needs separate API key configured in MCP
 
-## Next Up
-- [ ] Phase 2: Transaction management with filters
-- [ ] Phase 2: Statement verification view
-- [ ] Phase 3: AI Chat with VoltAgent
-- [ ] Phase 4: Settings + Polish + Deploy
+## Notes
+- App live at https://openfinance.to with SSL via Traefik/Let's Encrypt
+- Coolify on Hetzner server (5.78.176.218)
+- Prisma 7 uses driver adapters (no more built-in Rust engine)

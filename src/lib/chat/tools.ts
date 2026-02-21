@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '@/generated/prisma/client'
 
 export function createChatTools(userId: string) {
   return {

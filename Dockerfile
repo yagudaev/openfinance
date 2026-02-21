@@ -7,6 +7,7 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN yarn install
 RUN yarn db:generate
 
@@ -15,6 +16,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
+COPY --from=deps /app/src/generated ./src/generated
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn build
@@ -31,12 +33,11 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/src/generated ./src/generated
 
-# Install Prisma CLI separately for db push at startup
-# (prisma has deep transitive deps that standalone output doesn't include)
-RUN npm install --no-save --prefix /app/prisma-cli prisma@6.19.2
+# Install Prisma CLI + SQLite adapter for db push at startup
+RUN npm install --no-save --prefix /app/prisma-cli prisma@7.4.1 @prisma/adapter-better-sqlite3@7.4.1
 
 COPY start.sh ./
 

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 import { cn } from '@/lib/utils'
-import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard'
+import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
 
 const OPTIONS: { value: OwnershipFilterType; label: string }[] = [
   { value: 'combined', label: 'Combined' },
