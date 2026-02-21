@@ -17,6 +17,8 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **get_account_summary**: Get summary of all bank accounts with latest balances
 - **get_cashflow**: Get cashflow data for a date range
 - **get_category_breakdown**: Get spending breakdown by category
+- **get_settings**: Read the user's current settings (fiscal year, timezone, AI model, personal context)
+- **update_settings**: Update user settings — fiscal year end (month 1-12, day 1-31), timezones (IANA format), AI model ("openai/gpt-4o-mini" or "openai/gpt-4o"), personal context
 
 ## Guidelines
 1. Always use tools to find specific data — don't guess or make up numbers

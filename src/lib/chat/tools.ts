@@ -190,5 +190,109 @@ export function createChatTools(userId: string) {
         }
       },
     }),
+
+    get_settings: tool({
+      description: 'Get the current user settings including fiscal year, timezone, AI model, and personal context',
+      inputSchema: z.object({}),
+      execute: async () => {
+        try {
+          const settings = await prisma.userSettings.findUnique({
+            where: { userId },
+          })
+
+          if (!settings) {
+            return { error: 'No settings found. User has default settings.' }
+          }
+
+          const MONTHS = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+          ]
+
+          return {
+            fiscalYear: {
+              endMonth: MONTHS[settings.fiscalYearEndMonth - 1],
+              endDay: settings.fiscalYearEndDay,
+            },
+            timezone: {
+              bank: settings.bankTimezone,
+              display: settings.userTimezone,
+            },
+            ai: {
+              model: settings.aiModel,
+              personalContext: settings.aiContext || 'Not set',
+            },
+          }
+        } catch (error) {
+          console.error('get_settings error:', error)
+          return { error: 'Failed to get settings', message: String(error) }
+        }
+      },
+    }),
+
+    update_settings: tool({
+      description: 'Update user settings. Only pass the fields you want to change. Valid AI models: "openai/gpt-4o-mini", "openai/gpt-4o". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
+      inputSchema: z.object({
+        fiscalYearEndMonth: z.number().min(1).max(12).optional().describe('Fiscal year end month (1=January, 12=December)'),
+        fiscalYearEndDay: z.number().min(1).max(31).optional().describe('Fiscal year end day'),
+        bankTimezone: z.string().optional().describe('Bank timezone in IANA format (e.g. America/Vancouver)'),
+        userTimezone: z.string().optional().describe('Display timezone in IANA format (e.g. America/Toronto)'),
+        aiModel: z.string().optional().describe('AI model: "openai/gpt-4o-mini" or "openai/gpt-4o"'),
+        aiContext: z.string().optional().describe('Personal context about the user for better AI responses'),
+      }),
+      execute: async (params) => {
+        try {
+          const data: Record<string, unknown> = {}
+          if (params.fiscalYearEndMonth !== undefined) data.fiscalYearEndMonth = params.fiscalYearEndMonth
+          if (params.fiscalYearEndDay !== undefined) data.fiscalYearEndDay = params.fiscalYearEndDay
+          if (params.bankTimezone !== undefined) data.bankTimezone = params.bankTimezone
+          if (params.userTimezone !== undefined) data.userTimezone = params.userTimezone
+          if (params.aiModel !== undefined) {
+            if (!['openai/gpt-4o-mini', 'openai/gpt-4o'].includes(params.aiModel)) {
+              return { error: 'Invalid AI model. Must be "openai/gpt-4o-mini" or "openai/gpt-4o".' }
+            }
+            data.aiModel = params.aiModel
+          }
+          if (params.aiContext !== undefined) data.aiContext = params.aiContext
+
+          if (Object.keys(data).length === 0) {
+            return { error: 'No settings to update. Provide at least one field.' }
+          }
+
+          const updated = await prisma.userSettings.upsert({
+            where: { userId },
+            update: data,
+            create: { userId, ...data },
+          })
+
+          const MONTHS = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+          ]
+
+          return {
+            success: true,
+            updatedFields: Object.keys(data),
+            currentSettings: {
+              fiscalYear: {
+                endMonth: MONTHS[updated.fiscalYearEndMonth - 1],
+                endDay: updated.fiscalYearEndDay,
+              },
+              timezone: {
+                bank: updated.bankTimezone,
+                display: updated.userTimezone,
+              },
+              ai: {
+                model: updated.aiModel,
+                personalContext: updated.aiContext || 'Not set',
+              },
+            },
+          }
+        } catch (error) {
+          console.error('update_settings error:', error)
+          return { error: 'Failed to update settings', message: String(error) }
+        }
+      },
+    }),
   }
 }
