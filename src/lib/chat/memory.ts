@@ -51,6 +51,19 @@ export async function recallMemories(
   })
 }
 
+export async function searchMemories(userId: string, query: string) {
+  return prisma.userMemory.findMany({
+    where: {
+      userId,
+      OR: [
+        { key: { contains: query } },
+        { value: { contains: query } },
+      ],
+    },
+    orderBy: [{ category: 'asc' }, { updatedAt: 'desc' }],
+  })
+}
+
 export async function loadMemoriesForPrompt(userId: string): Promise<string | null> {
   const memories = await recallMemories(userId)
 

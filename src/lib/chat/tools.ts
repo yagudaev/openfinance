@@ -10,7 +10,7 @@ import {
   getRRSPInfo,
   getTFSAInfo,
 } from '@/lib/chat/finance-tools'
-import { saveMemory, recallMemories, deleteMemory, MEMORY_CATEGORIES, type MemoryCategory } from '@/lib/chat/memory'
+import { saveMemory, recallMemories, searchMemories, deleteMemory, MEMORY_CATEGORIES, type MemoryCategory } from '@/lib/chat/memory'
 
 export function createChatTools(userId: string) {
   return {
@@ -437,6 +437,40 @@ export function createChatTools(userId: string) {
         } catch (error) {
           console.error('recall_memory error:', error)
           return { error: 'Failed to recall memories', message: String(error) }
+        }
+      },
+    }),
+
+    search_memory: tool({
+      description:
+        'Search saved memories by keyword. Searches across both keys and values. Use this when you need to find a specific memory but don\'t know its exact key or category.',
+      inputSchema: z.object({
+        query: z.string().describe('Keyword to search for across memory keys and values (case-insensitive)'),
+      }),
+      execute: async ({ query }) => {
+        try {
+          const memories = await searchMemories(userId, query)
+
+          if (memories.length === 0) {
+            return {
+              count: 0,
+              message: `No memories found matching "${query}"`,
+            }
+          }
+
+          return {
+            count: memories.length,
+            memories: memories.map(m => ({
+              key: m.key,
+              value: m.value,
+              category: m.category,
+              categoryLabel: MEMORY_CATEGORIES[m.category as MemoryCategory] ?? m.category,
+              lastUpdated: m.updatedAt.toISOString().split('T')[0],
+            })),
+          }
+        } catch (error) {
+          console.error('search_memory error:', error)
+          return { error: 'Failed to search memories', message: String(error) }
         }
       },
     }),

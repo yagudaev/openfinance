@@ -43,6 +43,7 @@ const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> 
   evaluate_expression: { label: 'Calculating', icon: Calculator },
   save_memory: { label: 'Saving to memory', icon: Brain },
   recall_memory: { label: 'Recalling memories', icon: BookOpen },
+  search_memory: { label: 'Searching memories', icon: Search },
   delete_memory: { label: 'Forgetting memory', icon: Trash2 },
 }
 
