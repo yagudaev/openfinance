@@ -1,0 +1,65 @@
+---
+title: Introduction
+description: "OpenFinance is a self-hosted personal finance and bookkeeping app for freelancers and small businesses."
+---
+
+# What is OpenFinance?
+
+OpenFinance is an open-source, self-hosted personal finance and bookkeeping application. It processes bank statement PDFs using AI, tracks and categorizes transactions, and provides financial insights through a conversational AI assistant.
+
+<CardGroup cols={2}>
+  <Card title="AI-Powered PDF Processing" icon="file-pdf">
+    Upload bank statement PDFs and let AI extract transactions automatically with balance verification.
+  </Card>
+  <Card title="Transaction Management" icon="list">
+    View, search, filter, and categorize all your transactions across multiple bank accounts.
+  </Card>
+  <Card title="AI Financial Chat" icon="message-bot">
+    Ask questions about your finances in natural language. Get insights on spending, cash flow, and trends.
+  </Card>
+  <Card title="Self-Hosted & Private" icon="lock">
+    Your financial data stays on your server. No third-party data sharing. Single SQLite database for easy backup.
+  </Card>
+</CardGroup>
+
+## Who is it for?
+
+OpenFinance is built for people who want full control over their financial data:
+
+- **Freelancers and solopreneurs** managing personal and business accounts
+- **Small business owners** who need to track income, expenses, and cash flow
+- **Privacy-conscious individuals** who prefer self-hosted solutions over cloud finance apps
+- **Anyone** who receives bank statements as PDFs and wants to automate bookkeeping
+
+## Key Features
+
+- **Bank statement PDF processing** with AI-powered transaction extraction
+- **Automatic balance verification** to catch discrepancies
+- **Smart transaction categorization** (expense, income, owner pay, internal transfer, shareholder loan)
+- **Multi-account support** with per-account currency (CAD/USD)
+- **Dashboard** with monthly income/expenses and cash flow charts
+- **AI financial advisor** chat for querying your data in natural language
+- **Configurable fiscal year** and timezone settings
+- **Docker deployment** for easy self-hosting
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | Next.js 15 (App Router) + TypeScript |
+| Database | Prisma ORM + SQLite (default) |
+| Auth | BetterAuth (email/password + Google OAuth) |
+| AI | OpenAI GPT-4o-mini via Vercel AI SDK |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Deployment | Docker |
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Set up OpenFinance locally for development in minutes.
+  </Card>
+  <Card title="Self-Hosting" icon="server" href="/self-hosting">
+    Deploy OpenFinance on your own server with Docker.
+  </Card>
+</CardGroup>

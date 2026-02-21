@@ -1,0 +1,64 @@
+---
+title: Settings
+description: "Configure fiscal year, timezone, AI model, and bank accounts."
+---
+
+# Settings
+
+The Settings page lets you configure OpenFinance to match your financial setup. Navigate to **Settings** from the sidebar.
+
+## Fiscal Year
+
+Configure when your fiscal year ends. This affects date range filters and reporting periods throughout the app.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Fiscal Year End Month** | December (12) | The month your fiscal year ends |
+| **Fiscal Year End Day** | 31 | The day of the month your fiscal year ends |
+
+Common configurations:
+- **Calendar year**: December 31 (default)
+- **Canadian corporate**: March 31, June 30, or September 30
+- **US government fiscal year**: September 30
+
+## Timezone
+
+OpenFinance supports separate timezone settings for your bank and your display:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Bank Timezone** | America/Vancouver | Timezone used to interpret dates on bank statements |
+| **User Timezone** | America/Vancouver | Timezone used for displaying dates in the UI |
+
+Setting the correct bank timezone ensures that transaction dates are interpreted accurately from your bank statements.
+
+## AI Configuration
+
+### AI Model
+
+Select which AI model to use for the financial advisor chat. The default is `openai/gpt-4o-mini`. The model identifier follows the format `provider/model-name`.
+
+### AI Context
+
+Provide free-text context about your financial situation. This context is included in every AI chat conversation to help the advisor give more relevant answers.
+
+Examples of useful context:
+- Your business type and industry
+- How many clients or income sources you have
+- Which bank accounts are personal vs. business
+- Any specific financial goals or concerns
+
+## Bank Accounts
+
+The Bank Accounts section lists all accounts that have been detected from uploaded bank statements. For each account, you can configure:
+
+| Field | Description |
+|-------|-------------|
+| **Nickname** | A friendly name (e.g., "Business Checking") |
+| **Account Number** | The bank account number (detected from statements) |
+| **Bank Name** | The name of the bank (detected from statements) |
+| **Currency** | CAD or USD |
+| **Account Type** | Chequing, Savings, Credit Card, or other |
+| **Ownership Type** | Personal or Business |
+
+Bank accounts are created automatically when you upload a statement from a new account. You can edit the details here to add nicknames and correct any misdetected information.

@@ -1,0 +1,95 @@
+---
+title: AI Chat
+description: "Chat with an AI financial advisor that has access to your transaction data."
+---
+
+# AI Chat
+
+OpenFinance includes a built-in AI financial advisor. Ask questions about your finances in natural language, and the AI queries your actual transaction data to provide answers.
+
+## Getting Started
+
+Navigate to **Chat** from the sidebar. Type a question and the AI will use your transaction history to respond.
+
+## What Can You Ask?
+
+The AI advisor can answer questions about your financial data:
+
+<CardGroup cols={2}>
+  <Card title="Spending Analysis">
+    - "How much did I spend last month?"
+    - "What are my biggest expense categories?"
+    - "Show me all transactions over $500"
+  </Card>
+  <Card title="Income Tracking">
+    - "What was my total income this year?"
+    - "How does this month's income compare to last month?"
+    - "Show me all income transactions from January"
+  </Card>
+  <Card title="Cash Flow">
+    - "What's my cash flow for Q4?"
+    - "Am I spending more than I earn?"
+    - "Show me monthly income vs expenses for the past 6 months"
+  </Card>
+  <Card title="Account Overview">
+    - "What are my current account balances?"
+    - "How many bank accounts do I have?"
+    - "What's the latest balance on my checking account?"
+  </Card>
+</CardGroup>
+
+## Available Tools
+
+The AI has access to four tools that let it query your data in real-time:
+
+| Tool | Description |
+|------|-------------|
+| `search_transactions` | Search and filter transactions by description, date range, category, or type |
+| `get_account_summary` | Get a summary of all bank accounts with their latest balances |
+| `get_cashflow` | Calculate income vs. expenses for any date range |
+| `get_category_breakdown` | Get a breakdown of spending by category for any period |
+
+The AI automatically selects the right tool based on your question. It can chain multiple tool calls together for complex queries.
+
+## Example Prompts
+
+Here are some prompts to try:
+
+```
+What were my top 5 expenses this month?
+```
+
+```
+Compare my income and expenses for Q1 vs Q2 this year.
+```
+
+```
+Show me all transactions related to "Amazon" in the last 90 days.
+```
+
+```
+What percentage of my spending goes to each category?
+```
+
+```
+How much did I pay in rent over the past year?
+```
+
+## Custom AI Context
+
+In **Settings**, you can provide custom context about your financial situation. This helps the AI give more relevant answers. For example:
+
+> "I'm a freelance software developer. My main income comes from two clients. I have a business checking account at TD and a personal account at RBC. My fiscal year ends March 31."
+
+The AI includes this context in every conversation for more personalized responses.
+
+## Model Configuration
+
+By default, OpenFinance uses **OpenAI GPT-4o-mini** for the chat. You can change the AI model in **Settings** under the AI section.
+
+## Limitations
+
+- The AI can only access data that has been uploaded and processed in OpenFinance
+- It does not provide specific investment advice or tax advice
+- Each conversation turn allows up to 5 tool calls to prevent runaway queries
+- The AI cannot modify your data -- it is read-only

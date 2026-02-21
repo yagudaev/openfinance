@@ -1,0 +1,60 @@
+---
+title: API Overview
+description: "Overview of the OpenFinance API."
+---
+
+# API Overview
+
+OpenFinance exposes a set of API routes that power the web application. These routes handle authentication, file uploads, statement processing, and AI chat.
+
+## Base URL
+
+When running locally, the base URL is:
+
+```
+http://localhost:3000/api
+```
+
+For self-hosted deployments, replace with your configured `BETTER_AUTH_URL`.
+
+## API Routes
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/auth/**` | Various | BetterAuth authentication endpoints |
+| `/api/upload` | POST | Upload bank statement PDF files |
+| `/api/process-statement` | POST | Trigger AI processing of an uploaded statement |
+| `/api/chat` | POST | Send a message to the AI financial advisor |
+
+## Authentication
+
+All API routes (except `/api/auth/**`) require an authenticated session. Requests must include the session cookie set by BetterAuth during login.
+
+See [Authentication](/api-reference/authentication) for details on how sessions work.
+
+## Request Format
+
+API routes accept JSON request bodies unless otherwise noted (file uploads use `multipart/form-data`).
+
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -H "Cookie: better-auth.session_token=..." \
+  -d '{"messages": [{"role": "user", "content": "What was my income last month?"}]}'
+```
+
+## Response Format
+
+All API routes return JSON responses. Errors follow a consistent format:
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+The chat endpoint returns a streaming response using the Vercel AI SDK's `UIMessageStreamResponse` format.
+
+## Rate Limits
+
+OpenFinance does not enforce rate limits by default since it is self-hosted. If you expose your instance publicly, consider adding rate limiting at the reverse proxy level.
