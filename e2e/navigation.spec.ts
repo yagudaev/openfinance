@@ -9,13 +9,13 @@ test.describe('Navigation', () => {
   test('can navigate to transactions page', async ({ page }) => {
     await page.getByRole('link', { name: 'Transactions' }).click()
     await expect(page).toHaveURL(/\/transactions/)
-    await expect(page.getByText(/transactions/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
   })
 
   test('can navigate to statements page', async ({ page }) => {
     await page.getByRole('link', { name: 'Statements' }).click()
     await expect(page).toHaveURL(/\/statements/)
-    await expect(page.getByText(/statements/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Statements' })).toBeVisible()
   })
 
   test('can navigate to chat page', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Navigation', () => {
   test('can navigate to settings page', async ({ page }) => {
     await page.goto('/settings')
     await expect(page).toHaveURL(/\/settings/)
-    await expect(page.getByText(/settings/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
   })
 
   test('can navigate back to dashboard from any page', async ({ page }) => {
