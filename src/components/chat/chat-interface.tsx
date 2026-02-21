@@ -26,6 +26,7 @@ import {
   Trash2,
   BookOpen,
   PanelLeftOpen,
+  Bug,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
@@ -222,12 +223,14 @@ const ONBOARDING_SUGGESTIONS = [
 interface ChatInterfaceProps {
   threadId: string
   initialMessages?: UIMessage[]
+  initialTraceIds?: Record<string, string>
   isNewUser?: boolean
 }
 
-export function ChatInterface({ threadId: initialThreadId, initialMessages = [], isNewUser = false }: ChatInterfaceProps) {
+export function ChatInterface({ threadId: initialThreadId, initialMessages = [], initialTraceIds = {}, isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
   const [threadId, setThreadId] = useState(initialThreadId)
+  const [traceIds, setTraceIds] = useState<Record<string, string>>(initialTraceIds)
   const [input, setInput] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -330,6 +333,7 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
     const data = await res.json()
     setThreadId(data.threadId)
     setMessages([])
+    setTraceIds({})
     setAttachedFile(null)
   }
 
@@ -351,8 +355,16 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
         parts: [{ type: 'text' as const, text: m.content }],
       }))
 
+      const loadedTraceIds: Record<string, string> = {}
+      for (const m of data.messages as { id: string; traceId?: string | null }[]) {
+        if (m.traceId) {
+          loadedTraceIds[m.id] = m.traceId
+        }
+      }
+
       setThreadId(selectedThreadId)
       setMessages(loadedMessages)
+      setTraceIds(loadedTraceIds)
       setAttachedFile(null)
     } catch (error) {
       console.error('Failed to switch thread:', error)
@@ -509,46 +521,61 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
                       <Bot className="h-4 w-4 text-violet-600" />
                     </div>
                   )}
-                  <div
-                    className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
-                      message.role === 'user'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    {message.parts?.map((part, i) => {
-                      if (part.type === 'text') {
-                        if (message.role === 'assistant') {
-                          return <MarkdownContent key={i} text={part.text} />
+                  <div className="flex flex-col">
+                    <div
+                      className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
+                        message.role === 'user'
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-gray-100 text-gray-900'
+                      }`}
+                    >
+                      {message.parts?.map((part, i) => {
+                        if (part.type === 'text') {
+                          if (message.role === 'assistant') {
+                            return <MarkdownContent key={i} text={part.text} />
+                          }
+                          return (
+                            <div key={i} className="whitespace-pre-wrap">
+                              {part.text}
+                            </div>
+                          )
                         }
-                        return (
-                          <div key={i} className="whitespace-pre-wrap">
-                            {part.text}
-                          </div>
-                        )
-                      }
-                      if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
-                        const toolPart = part as {
-                          type: string
-                          toolCallId: string
-                          toolName?: string
-                          state: string
-                          input?: unknown
-                          output?: unknown
+                        if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
+                          const toolPart = part as {
+                            type: string
+                            toolCallId: string
+                            toolName?: string
+                            state: string
+                            input?: unknown
+                            output?: unknown
+                          }
+                          const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
+                          return (
+                            <ToolCallDisplay
+                              key={i}
+                              toolName={toolName}
+                              state={toolPart.state}
+                              input={toolPart.input}
+                              output={toolPart.output}
+                            />
+                          )
                         }
-                        const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
-                        return (
-                          <ToolCallDisplay
-                            key={i}
-                            toolName={toolName}
-                            state={toolPart.state}
-                            input={toolPart.input}
-                            output={toolPart.output}
-                          />
-                        )
-                      }
-                      return null
-                    })}
+                        return null
+                      })}
+                    </div>
+                    {message.role === 'assistant' && traceIds[message.id] && (
+                      <div className="mt-1">
+                        <a
+                          href={`https://langfuse.openfinance.to/trace/${traceIds[message.id]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View trace in Langfuse"
+                          className="inline-flex items-center text-gray-400 transition-colors hover:text-gray-600"
+                        >
+                          <Bug className="h-3.5 w-3.5" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                   {message.role === 'user' && (
                     <UserAvatar
