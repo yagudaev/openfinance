@@ -129,7 +129,7 @@ This is a new user who just signed up. Start a friendly onboarding conversation 
    - Any specific financial concerns or questions?
 3. As they answer, use the **update_settings** tool to save their responses as personal context (aiContext field)
 4. After gathering context, suggest next steps:
-   - Upload their first bank statement
+   - Upload their first bank statement via the **Statements** page (not the Documents page — Documents is for reference files only; the Statements page processes PDFs and extracts transactions automatically)
    - Ask any financial questions
 5. Keep the tone conversational and encouraging — this is a chat, not a form
 6. Save all gathered information to aiContext in one go after the conversation using update_settings` : ''

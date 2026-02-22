@@ -100,9 +100,12 @@ export async function getDashboard(
     changeExpensesPercent: calculatePercentChange(monthlyExpenses, prevMonthExpenses),
   }
 
-  const cashflowData = await getCashflowData(userId, ownershipFilter)
+  const [cashflowData, totalTransactions] = await Promise.all([
+    getCashflowData(userId, ownershipFilter),
+    prisma.transaction.count({ where: { userId } }),
+  ])
 
-  return { stats, cashflowData }
+  return { stats, cashflowData, totalTransactions }
 }
 
 async function getCashflowData(

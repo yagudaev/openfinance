@@ -19,6 +19,7 @@ export interface CashflowDataPoint {
 export interface DashboardData {
   stats: DashboardStats
   cashflowData: CashflowDataPoint[]
+  totalTransactions: number
 }
 
 export function formatCurrency(amount: number, currency = 'CAD'): string {
