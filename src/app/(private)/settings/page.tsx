@@ -1,14 +1,16 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+
+import { decrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
+import { getPlaidCredentials } from '@/lib/plaid'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
 import { GoogleDriveConnection } from '@/components/settings/google-drive-connection'
 import { ExpenseCategories } from '@/components/settings/expense-categories'
 import { DeleteAccount } from '@/components/settings/delete-account'
-import { getPlaidCredentials } from '@/lib/plaid'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -69,8 +71,8 @@ export default async function SettingsPage() {
         <GoogleDriveConnection googleConfigured={googleConfigured} />
 
         <PlaidKeysForm
-          plaidClientId={settings.plaidClientId}
-          plaidSecret={settings.plaidSecret}
+          plaidClientId={settings.plaidClientId ? decrypt(settings.plaidClientId) : null}
+          plaidSecret={settings.plaidSecret ? decrypt(settings.plaidSecret) : null}
           plaidEnvironment={settings.plaidEnvironment}
         />
 

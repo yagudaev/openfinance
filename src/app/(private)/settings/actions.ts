@@ -2,8 +2,10 @@
 
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+
+import { encrypt } from '@/lib/encryption'
+import { prisma } from '@/lib/prisma'
 
 export async function updateSettings(data: {
   fiscalYearEndMonth?: number
@@ -34,10 +36,17 @@ export async function updatePlaidSettings(data: {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return { success: false, error: 'Unauthorized' }
 
+  // Encrypt sensitive credentials before storing
+  const encryptedData = {
+    ...data,
+    plaidClientId: data.plaidClientId ? encrypt(data.plaidClientId) : data.plaidClientId,
+    plaidSecret: data.plaidSecret ? encrypt(data.plaidSecret) : data.plaidSecret,
+  }
+
   await prisma.userSettings.upsert({
     where: { userId: session.user.id },
-    update: data,
-    create: { userId: session.user.id, ...data },
+    update: encryptedData,
+    create: { userId: session.user.id, ...encryptedData },
   })
 
   revalidatePath('/settings')

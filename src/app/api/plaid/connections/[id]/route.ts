@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { decrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { getPlaidClientForUser } from '@/lib/plaid'
 
@@ -28,7 +29,7 @@ export async function DELETE(
   try {
     const client = await getPlaidClientForUser(session.user.id)
     if (client) {
-      await client.itemRemove({ access_token: connection.accessToken })
+      await client.itemRemove({ access_token: decrypt(connection.accessToken) })
     }
   } catch (error) {
     // If removal from Plaid fails, still disconnect locally

@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
+
+import { decrypt, encrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { scanDriveForPDFs, refreshAccessToken } from '@/lib/services/google-drive'
 
@@ -23,19 +25,19 @@ export async function POST() {
 
   try {
     // Refresh access token if expired
-    let accessToken = connection.accessToken
+    let accessToken = decrypt(connection.accessToken)
     if (new Date() >= connection.expiresAt) {
-      const credentials = await refreshAccessToken(connection.refreshToken)
+      const credentials = await refreshAccessToken(decrypt(connection.refreshToken))
       if (!credentials.access_token) {
         throw new Error('Failed to refresh access token')
       }
       accessToken = credentials.access_token
 
-      // Update stored tokens
+      // Update stored tokens (encrypted)
       await prisma.googleDriveConnection.update({
         where: { userId: session.user.id },
         data: {
-          accessToken: credentials.access_token,
+          accessToken: encrypt(credentials.access_token),
           expiresAt: credentials.expiry_date
             ? new Date(credentials.expiry_date)
             : new Date(Date.now() + 3600 * 1000),
