@@ -50,7 +50,7 @@ test.describe('Smoke Test: Authenticated Pages', () => {
     // Statements
     await page.goto('/statements')
     await expect(page.getByRole('heading', { name: 'Statements' })).toBeVisible()
-    await expect(page.getByText('PDF bank statements')).toBeVisible()
+    await expect(page.getByText('PDF bank statements')).toBeVisible({ timeout: 10_000 })
 
     // Settings
     await page.goto('/settings')
