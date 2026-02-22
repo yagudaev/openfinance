@@ -38,6 +38,7 @@ model User {
   expenseCategories     ExpenseCategory[]
   netWorthAccounts      NetWorthAccount[]
   netWorthSnapshots     NetWorthSnapshot[]
+  scenarios             Scenario[]
 }
 
 model Session {
@@ -467,4 +468,23 @@ model NetWorthSnapshot {
   @@unique([userId, date])
   @@index([userId])
   @@index([userId, date])
+}
+
+// ============================================================
+// Scenario planning
+// ============================================================
+
+model Scenario {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        String   // debt_payoff | savings | investment | purchase | income | expense | retirement
+  parameters  String   // JSON: scenario-specific parameters
+  projections String   // JSON: array of {month, netWorth, assets, liabilities}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
