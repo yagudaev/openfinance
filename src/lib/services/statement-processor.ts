@@ -12,7 +12,7 @@ import { getUploadFullPath } from '@/lib/upload-path'
 // pdf-parse v1 has no proper ESM/TS types — use require
 const pdfParse = require('pdf-parse')
 
-const MAX_ITERATIONS = 3
+const MAX_ITERATIONS = 15
 
 /**
  * Process a statement by its database ID.
@@ -252,8 +252,10 @@ async function extractAndVerify(
       role: 'user',
       content: `${feedbackParts.join('\n\n')}
 
-Please try again. Focus on the transactions specifically, ensuring each has a valid date.
-Respond in JSON format like in the system prompt.`,
+              Please try again. Do your best to extract the data even from slightly blurry images.
+              Focus on the transactions specifically, ensuring each has a valid date.
+
+              Respond in JSON format like in the system prompt.`,
     })
   }
 
@@ -274,12 +276,14 @@ async function extractDataFromText(
   const messages: ChatCompletionMessageParam[] = [
     {
       role: 'user',
-      content: `Please extract all transaction data from this bank statement text.
+      content: `Please extract all transaction data from these bank statement pages.
 The bank is in the ${bankTimezone} timezone, so please interpret all dates as being in that timezone.
 
-EXTRACTED PDF TEXT:
+EXTRACTED PDF TEXT (use these exact values for all amounts, dates, and numbers):
 
-${pdfText}`,
+<bk-extracted-pdf-text>
+${pdfText}
+</bk-extracted-pdf-text>`,
     },
     ...prevMessages,
   ]
@@ -306,11 +310,11 @@ ${pdfText}`,
     throw new Error('Failed to extract statement period dates.')
   }
 
-  if (data.openingBalance == null) {
+  if (!data.openingBalance && data.openingBalance !== 0) {
     throw new Error('Failed to extract opening balance from statement.')
   }
 
-  if (data.closingBalance == null) {
+  if (!data.closingBalance && data.closingBalance !== 0) {
     throw new Error('Failed to extract closing balance from statement.')
   }
 
@@ -576,41 +580,46 @@ function calculateClosingBalance(
 }
 
 function getSystemPrompt(timezone: string): string {
-  return `You are a financial data extraction expert. Extract all transaction data from the bank statement text and return it as structured JSON.
+  return `You are a financial data extraction expert. Extract all transaction data from the bank statement and return it as structured JSON.
 
-IMPORTANT: The bank operates in the ${timezone} timezone. All dates should be interpreted as being in this timezone.
+    CRITICAL: When extracted PDF text is provided within <bk-extracted-pdf-text></bk-extracted-pdf-text> tags, you MUST use the exact numeric values from that text for all financial figures (amounts, balances, totals). The extracted text contains the precise values - do NOT estimate, round, or interpret numbers from the images. Your job is to structure the provided text data into JSON format.
 
-Return the data in this exact format:
-{
-  "bankName": "string",
-  "accountNumber": "string (full account number as shown on statement)",
-  "statementDate": "YYYY-MM-DD (optional - if not clearly visible, omit this field)",
-  "periodStart": "YYYY-MM-DD",
-  "periodEnd": "YYYY-MM-DD",
-  "openingBalance": number,
-  "closingBalance": number,
-  "totalDeposits": number,
-  "totalWithdrawals": number,
-  "transactions": [
+    IMPORTANT: The bank operates in the ${timezone} timezone. All dates and times in the statement should be interpreted as being in this timezone.
+
+    Return the data in this exact format:
     {
-      "date": "YYYY-MM-DD",
-      "description": "string",
-      "amount": number (positive for credits, negative for debits),
-      "balance": number (if available),
-      "type": "credit" or "debit",
-      "referenceNumber": "string (if available)"
+      "bankName": "string",
+      "accountNumber": "string (full account number as shown on statement)",
+      "statementDate": "YYYY-MM-DD (optional - if not clearly visible, omit this field)",
+      "periodStart": "YYYY-MM-DD",
+      "periodEnd": "YYYY-MM-DD",
+      "openingBalance": number,
+      "closingBalance": number,
+      "totalDeposits": number,
+      "totalWithdrawals": number,
+      "transactions": [
+        {
+          "date": "YYYY-MM-DD",
+          "description": "string",
+          "amount": number (positive for credits, negative for debits),
+          "balance": number (if available),
+          "type": "credit" or "debit",
+          "referenceNumber": "string (if available)"
+        }
+      ]
     }
-  ]
-}
 
-CRITICAL extraction rules:
-- Extract ONLY actual transactions (debits and credits). Do NOT include "Opening balance", "Closing balance", or summary/total lines as transactions
-- The opening balance + sum of all transaction amounts must equal the closing balance
-- Use the exact values from the text for all numbers (amounts, balances, dates)
-- Extract ALL transactions visible in the statement
-- Ensure dates are in YYYY-MM-DD format
-- Amount should be positive for credits/deposits and negative for debits/withdrawals
-- If statementDate is not clearly visible, omit it (periodEnd will be used as fallback)
-- Calculate totals if not explicitly stated
-- Include the full account number as shown on the statement`
+    Important extraction rules:
+    - The extracted PDF text will be provided within <bk-extracted-pdf-text></bk-extracted-pdf-text> tags
+    - Use ONLY the exact values from the extracted PDF text for all numbers (amounts, balances, dates)
+    - Do NOT infer, estimate, or OCR numbers from images when text is provided
+    - Extract ONLY actual transactions (debits and credits). Do NOT include "Opening balance", "Closing balance", or summary/total lines as transactions
+    - Extract ALL transactions visible in the statement
+    - Ensure dates are in YYYY-MM-DD format
+    - All dates should be interpreted as being in the ${timezone} timezone
+    - Amount should be positive for credits/deposits and negative for debits/withdrawals
+    - If statementDate is not clearly visible, omit it (periodEnd will be used as fallback)
+    - Calculate totals if not explicitly stated
+    - Ensure the transactions balance correctly: opening balance + sum of all transaction amounts must equal the closing balance
+    - Include the full account number as shown on the statement`
 }
