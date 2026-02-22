@@ -15,6 +15,7 @@ import {
   X,
   ListChecks,
   Landmark,
+  TrendingUp,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/chat', label: 'Home', icon: MessageSquare },
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/net-worth', label: 'Net Worth', icon: Landmark },
+  { href: '/scenarios', label: 'Scenarios', icon: TrendingUp },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/expenses', label: 'Expenses', icon: PieChart },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
@@ -120,7 +122,7 @@ export function Navbar() {
       <div
         className={cn(
           'sm:hidden overflow-hidden transition-all duration-200 ease-in-out',
-          mobileMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0',
+          mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
         )}
       >
         <div className="border-t border-gray-200 px-4 py-2 space-y-1">

@@ -16,6 +16,14 @@ import {
 import { saveMemory, recallMemories, searchMemories, deleteMemory, MEMORY_CATEGORIES, type MemoryCategory } from '@/lib/chat/memory'
 import { processStatement } from '@/lib/services/statement-processor'
 import { categorizeTransactions } from '@/lib/services/transaction-categorizer'
+import {
+  createScenario,
+  getScenarios,
+  deleteScenario,
+  compareScenarios,
+} from '@/lib/services/scenario-planner'
+import { SCENARIO_TYPE_LABELS } from '@/lib/services/scenario-types'
+import type { ScenarioParams } from '@/lib/services/scenario-types'
 
 // pdf-parse v1 has no proper ESM/TS types — use require
 const pdfParse = require('pdf-parse')
@@ -690,6 +698,149 @@ export function createChatTools(userId: string) {
           failed: results.length - successCount,
           totalTransactions,
           results,
+        }
+      },
+    }),
+
+    run_scenario: tool({
+      description:
+        'Run a financial what-if scenario and save the projection. Scenario types: debt_payoff (avalanche/snowball/custom strategy), savings (goal tracking), investment (compound growth), purchase (major purchase impact), income (raise/job change), expense (reduction impact), retirement (FIRE/target date). Use the user\'s actual financial data when available — call get_account_summary or recall_memory first. Returns a summary with projected net worth over time. The scenario is saved so the user can view it on the Scenarios page.',
+      inputSchema: z.object({
+        title: z.string().describe('Short descriptive title for this scenario'),
+        description: z.string().optional().describe('Optional longer description'),
+        type: z.enum([
+          'debt_payoff', 'savings', 'investment', 'purchase',
+          'income', 'expense', 'retirement',
+        ]).describe('Type of scenario'),
+        params: z.string().describe(
+          'JSON string of scenario parameters. Varies by type:\n' +
+          '- debt_payoff: {"debts":[{"name":"Visa","balance":5000,"interestRate":0.19,"minimumPayment":150}],"strategy":"avalanche"|"snowball"|"custom","extraPayment":200,"customOrder":["name1"]}\n' +
+          '- savings: {"currentSavings":1000,"monthlyContribution":500,"annualReturnRate":0.04,"goalAmount":20000,"projectionMonths":36}\n' +
+          '- investment: {"initialInvestment":10000,"monthlyContribution":500,"annualReturnRate":0.07,"projectionYears":10}\n' +
+          '- purchase: {"purchaseAmount":50000,"downPayment":10000,"loanRate":0.05,"loanTermMonths":60,"currentNetWorth":100000,"currentAssets":120000,"currentLiabilities":20000,"monthlyIncome":6000,"monthlyExpenses":4000}\n' +
+          '- income: {"currentMonthlyIncome":5000,"newMonthlyIncome":7000,"currentMonthlyExpenses":4000,"currentNetWorth":50000,"currentAssets":60000,"currentLiabilities":10000,"savingsRate":0.8,"projectionMonths":24}\n' +
+          '- expense: {"currentMonthlyExpenses":4000,"reductionAmount":500,"currentMonthlyIncome":6000,"currentNetWorth":50000,"currentAssets":60000,"currentLiabilities":10000,"savingsRate":0.8,"projectionMonths":24}\n' +
+          '- retirement: {"currentAge":30,"retirementAge":55,"currentNetWorth":100000,"currentAssets":120000,"currentLiabilities":20000,"monthlyContribution":2000,"annualReturnRate":0.07,"annualReturnRateRetired":0.04,"monthlyExpensesInRetirement":4000,"inflationRate":0.02}',
+        ),
+      }),
+      execute: async ({ title, description, type, params: paramsJson }) => {
+        try {
+          const parsedParams = JSON.parse(paramsJson)
+          const scenario: ScenarioParams = { type, params: parsedParams } as ScenarioParams
+
+          const result = await createScenario(userId, title, description ?? null, scenario)
+          const lastPoint = result.projections[result.projections.length - 1]
+          const firstPoint = result.projections[0]
+
+          return {
+            success: true,
+            scenarioId: result.id,
+            title: result.title,
+            type: SCENARIO_TYPE_LABELS[result.type],
+            totalMonths: lastPoint?.month ?? 0,
+            startingNetWorth: `$${(firstPoint?.netWorth ?? 0).toLocaleString()}`,
+            endingNetWorth: `$${(lastPoint?.netWorth ?? 0).toLocaleString()}`,
+            netWorthChange: `$${((lastPoint?.netWorth ?? 0) - (firstPoint?.netWorth ?? 0)).toLocaleString()}`,
+            projectionPoints: result.projections.length,
+            message: `Scenario "${title}" saved. View it on the Scenarios page or compare it with other scenarios.`,
+          }
+        } catch (error) {
+          console.error('run_scenario error:', error)
+          return { error: 'Failed to run scenario', message: String(error) }
+        }
+      },
+    }),
+
+    list_scenarios: tool({
+      description: 'List all saved financial scenarios for the user. Shows title, type, and projected outcome for each.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        try {
+          const scenarios = await getScenarios(userId)
+
+          if (scenarios.length === 0) {
+            return {
+              count: 0,
+              message: 'No saved scenarios. Use run_scenario to create what-if projections.',
+            }
+          }
+
+          return {
+            count: scenarios.length,
+            scenarios: scenarios.map(s => {
+              const first = s.projections[0]
+              const last = s.projections[s.projections.length - 1]
+              return {
+                id: s.id,
+                title: s.title,
+                type: SCENARIO_TYPE_LABELS[s.type],
+                description: s.description,
+                totalMonths: last?.month ?? 0,
+                startingNetWorth: `$${(first?.netWorth ?? 0).toLocaleString()}`,
+                endingNetWorth: `$${(last?.netWorth ?? 0).toLocaleString()}`,
+                createdAt: s.createdAt.split('T')[0],
+              }
+            }),
+          }
+        } catch (error) {
+          console.error('list_scenarios error:', error)
+          return { error: 'Failed to list scenarios', message: String(error) }
+        }
+      },
+    }),
+
+    compare_scenarios: tool({
+      description: 'Compare 2-3 saved scenarios side by side. Returns projection data for overlaying on a chart. Call list_scenarios first to get scenario IDs.',
+      inputSchema: z.object({
+        scenarioIds: z.array(z.string()).min(2).max(3).describe('Array of 2-3 scenario IDs to compare'),
+      }),
+      execute: async ({ scenarioIds }) => {
+        try {
+          const comparison = await compareScenarios(userId, scenarioIds)
+
+          if (comparison.scenarios.length === 0) {
+            return { error: 'No matching scenarios found. Check the IDs.' }
+          }
+
+          return {
+            count: comparison.scenarios.length,
+            maxMonths: comparison.maxMonths,
+            scenarios: comparison.scenarios.map(s => {
+              const first = s.projections[0]
+              const last = s.projections[s.projections.length - 1]
+              return {
+                id: s.id,
+                title: s.title,
+                type: SCENARIO_TYPE_LABELS[s.type],
+                startingNetWorth: `$${(first?.netWorth ?? 0).toLocaleString()}`,
+                endingNetWorth: `$${(last?.netWorth ?? 0).toLocaleString()}`,
+                totalMonths: last?.month ?? 0,
+              }
+            }),
+            message: 'View and compare these scenarios visually on the Scenarios page.',
+          }
+        } catch (error) {
+          console.error('compare_scenarios error:', error)
+          return { error: 'Failed to compare scenarios', message: String(error) }
+        }
+      },
+    }),
+
+    delete_scenario: tool({
+      description: 'Delete a saved scenario by ID. Call list_scenarios first to find the scenario ID.',
+      inputSchema: z.object({
+        scenarioId: z.string().describe('ID of the scenario to delete'),
+      }),
+      execute: async ({ scenarioId }) => {
+        try {
+          const deleted = await deleteScenario(userId, scenarioId)
+          if (!deleted) {
+            return { success: false, message: 'Scenario not found.' }
+          }
+          return { success: true, message: 'Scenario deleted.' }
+        } catch (error) {
+          console.error('delete_scenario error:', error)
+          return { error: 'Failed to delete scenario', message: String(error) }
         }
       },
     }),
