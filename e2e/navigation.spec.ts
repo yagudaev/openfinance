@@ -12,10 +12,10 @@ test.describe('Navigation', () => {
     await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
   })
 
-  test('can navigate to statements page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Statements' }).click()
-    await expect(page).toHaveURL(/\/statements/)
-    await expect(page.getByRole('heading', { name: 'Statements' })).toBeVisible()
+  test('can navigate to documents page', async ({ page }) => {
+    await page.getByRole('link', { name: 'Documents' }).click()
+    await expect(page).toHaveURL(/\/documents/)
+    await expect(page.getByRole('heading', { name: 'Documents' })).toBeVisible()
   })
 
   test('can navigate to chat page via Home link', async ({ page }) => {

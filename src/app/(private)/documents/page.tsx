@@ -6,12 +6,22 @@ import { prisma } from '@/lib/prisma'
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
 import { DocumentUploader } from '@/components/documents/document-uploader'
+import type { DocumentItem, DocumentStatus } from '@/components/documents/document-types'
 
 interface DocumentsPageProps {
   searchParams: Promise<{
     search?: string
-    type?: string
+    category?: string
   }>
+}
+
+function getStatementStatus(statement: {
+  isProcessed: boolean
+  verificationStatus: string | null
+}): DocumentStatus {
+  if (!statement.isProcessed) return 'pending'
+  if (statement.verificationStatus === 'error') return 'error'
+  return 'done'
 }
 
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
@@ -20,22 +30,85 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
   const params = await searchParams
   const search = params.search || ''
-  const documentType = params.type || ''
+  const category = params.category || ''
 
-  const where: Record<string, unknown> = { userId: session.user.id }
-
+  // Query documents
+  const docWhere: Record<string, unknown> = { userId: session.user.id }
   if (search) {
-    where.fileName = { contains: search }
+    docWhere.fileName = { contains: search }
   }
-
-  if (documentType) {
-    where.documentType = documentType
+  if (category) {
+    docWhere.documentType = category
   }
 
   const documents = await prisma.document.findMany({
-    where,
+    where: docWhere,
     orderBy: { uploadedAt: 'desc' },
   })
+
+  // Query statements (show when no category filter, or when category is 'statement')
+  const showStatements = !category || category === 'statement'
+
+  const statementItems: DocumentItem[] = []
+
+  if (showStatements) {
+    const stmtWhere: Record<string, unknown> = { userId: session.user.id }
+    if (search) {
+      stmtWhere.OR = [
+        { fileName: { contains: search } },
+        { bankName: { contains: search } },
+      ]
+    }
+
+    const statements = await prisma.bankStatement.findMany({
+      where: stmtWhere,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        bankAccount: { select: { nickname: true } },
+      },
+    })
+
+    for (const stmt of statements) {
+      statementItems.push({
+        id: `stmt-${stmt.id}`,
+        fileName: stmt.fileName,
+        fileSize: stmt.fileSize,
+        mimeType: 'application/pdf',
+        documentType: 'statement',
+        tags: null,
+        description: `${stmt.bankName} \u2014 ${stmt.accountNumber || 'No account'}`,
+        uploadedAt: stmt.createdAt.toISOString(),
+        status: getStatementStatus(stmt),
+        accountName: stmt.bankAccount?.nickname || stmt.bankName,
+        source: 'statement' as const,
+        statementId: stmt.id,
+      })
+    }
+  }
+
+  // Merge into unified list
+  const documentItems: DocumentItem[] = [
+    ...documents.map(doc => ({
+      id: doc.id,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      mimeType: doc.mimeType,
+      documentType: doc.documentType,
+      tags: doc.tags,
+      description: doc.description,
+      uploadedAt: doc.uploadedAt.toISOString(),
+      status: 'done' as DocumentStatus,
+      accountName: null,
+      source: 'document' as const,
+      statementId: null,
+    })),
+    ...statementItems,
+  ]
+
+  // Sort by upload date descending
+  documentItems.sort((a, b) =>
+    new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  )
 
   return (
     <div>
@@ -50,20 +123,9 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
       <DocumentUploader />
 
-      <DocumentFilters search={search} documentType={documentType} />
+      <DocumentFilters search={search} category={category} />
 
-      <DocumentTable
-        documents={documents.map(doc => ({
-          id: doc.id,
-          fileName: doc.fileName,
-          fileSize: doc.fileSize,
-          mimeType: doc.mimeType,
-          documentType: doc.documentType,
-          tags: doc.tags,
-          description: doc.description,
-          uploadedAt: doc.uploadedAt.toISOString(),
-        }))}
-      />
+      <DocumentTable documents={documentItems} />
     </div>
   )
 }
