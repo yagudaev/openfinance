@@ -2,10 +2,11 @@ interface SystemPromptOptions {
   userContext?: string | null
   memories?: string | null
   isNewUser?: boolean
+  expenseCategories?: string | null
 }
 
 export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
-  const { userContext, memories, isNewUser } = options
+  const { userContext, memories, isNewUser, expenseCategories } = options
   const today = new Date().toISOString().split('T')[0]
   const basePrompt = `You are a knowledgeable financial advisor embedded in OpenFinance, a personal and business bookkeeping application. You have access to the user's complete transaction history and account information.
 
@@ -130,5 +131,12 @@ This is a new user who just signed up. Start a friendly onboarding conversation 
 ${memories}`
     : ''
 
-  return basePrompt + onboardingSection + contextSection + memoriesSection
+  const categoriesSection = expenseCategories
+    ? `\n\n## Expense Categories
+The user has configured the following expense categories for transaction classification. When discussing categories or classifying transactions, use these exact category names:
+
+${expenseCategories}`
+    : ''
+
+  return basePrompt + onboardingSection + contextSection + memoriesSection + categoriesSection
 }

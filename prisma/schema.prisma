@@ -35,6 +35,7 @@ model User {
   documents             Document[]
   jobs                  Job[]
   googleDriveConnection GoogleDriveConnection?
+  expenseCategories     ExpenseCategory[]
 }
 
 model Session {
@@ -401,4 +402,27 @@ model JobItem {
   createdAt   DateTime  @default(now())
 
   @@index([jobId])
+}
+
+// ============================================================
+// Expense categories
+// ============================================================
+
+model ExpenseCategory {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  icon        String?  // Emoji icon
+  color       String?  // Hex color code
+  sortOrder   Int      @default(0)
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([userId, isActive])
 }

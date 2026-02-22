@@ -16,6 +16,7 @@ import { prisma } from '@/lib/prisma'
 import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
+import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
 import { langfuseSpanProcessor } from '@/instrumentation'
 
 export const maxDuration = 120
@@ -63,10 +64,12 @@ const handler = async (request: Request) => {
 
   const isNewUser = !settings?.aiContext
   const memories = await loadMemoriesForPrompt(session.user.id)
+  const expenseCategories = await getCategoriesForClassifier(session.user.id)
   const systemPrompt = buildSystemPrompt({
     userContext: settings?.aiContext,
     memories,
     isNewUser,
+    expenseCategories: expenseCategories || null,
   })
   const tools = createChatTools(session.user.id)
 
