@@ -17,8 +17,8 @@ export async function ensureLoggedIn(page: Page) {
     // Wait a moment for the response
     await page.waitForTimeout(2000)
 
-    // If still on login page (user doesn't exist), sign up instead
-    if (page.url().includes('/auth/login')) {
+    // If still on auth pages (login or sign-up redirect), sign up instead
+    if (page.url().includes('/auth/')) {
       await page.goto('/auth/sign-up')
       await page.getByLabel('Name').fill(AUTH_NAME)
       await page.getByLabel('Email').fill(AUTH_EMAIL)
