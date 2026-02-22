@@ -50,41 +50,16 @@ async function login(): Promise<string> {
 }
 
 async function getPendingStatements(cookie: string): Promise<Array<{ id: string; fileName: string; fileSize: number }>> {
-  // Use a custom endpoint that fetches pending statements
-  // Since we don't have one, we'll use the statements list and filter
-  const res = await fetch(`${baseUrl}/api/statements?status=pending&limit=1000`, {
+  const res = await fetch(`${baseUrl}/api/statements/pending`, {
     headers: { Cookie: cookie },
   })
 
   if (!res.ok) {
-    // Try alternative: fetch all statements from the statements page API
-    console.log('Direct API not available, fetching all statements...')
-    const allRes = await fetch(`${baseUrl}/api/statements`, {
-      headers: { Cookie: cookie },
-    })
-    if (!allRes.ok) {
-      throw new Error(`Failed to fetch statements: ${allRes.status}`)
-    }
-    const data = await allRes.json()
-    const statements = data.statements || data || []
-    return statements
-      .filter((s: { status: string }) => s.status === 'pending')
-      .map((s: { id: string; fileName: string; fileSize: number }) => ({
-        id: s.id,
-        fileName: s.fileName,
-        fileSize: s.fileSize || 0,
-      }))
+    throw new Error(`Failed to fetch pending statements: ${res.status}`)
   }
 
   const data = await res.json()
-  const statements = data.statements || data || []
-  return statements
-    .filter((s: { status: string }) => s.status === 'pending')
-    .map((s: { id: string; fileName: string; fileSize: number }) => ({
-      id: s.id,
-      fileName: s.fileName,
-      fileSize: s.fileSize || 0,
-    }))
+  return data.statements || []
 }
 
 async function processBatch(
