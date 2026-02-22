@@ -32,6 +32,7 @@ model User {
   chatThreads      ChatThread[]
   chatTraces       ChatTrace[]
   plaidConnections PlaidConnection[]
+  documents        Document[]
 }
 
 model Session {
@@ -316,4 +317,27 @@ model PlaidConnection {
   updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// ============================================================
+// Document library
+// ============================================================
+
+model Document {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileUrl      String   // Relative path under data/uploads/documents/
+  fileSize     Int
+  mimeType     String
+  documentType String   @default("other") // statement | tax | investment | receipt | other
+  tags         String?  // Comma-separated tags
+  description  String?
+  uploadedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, documentType])
 }
