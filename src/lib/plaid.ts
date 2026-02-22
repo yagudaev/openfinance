@@ -1,5 +1,6 @@
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid'
 
+import { decrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 
 type PlaidEnvironmentName = 'sandbox' | 'development' | 'production'
@@ -43,8 +44,8 @@ export async function getPlaidCredentials(
   // Self-hosted: user provides their own keys
   if (settings?.plaidClientId && settings?.plaidSecret) {
     return {
-      clientId: settings.plaidClientId,
-      secret: settings.plaidSecret,
+      clientId: decrypt(settings.plaidClientId),
+      secret: decrypt(settings.plaidSecret),
       environment: (settings.plaidEnvironment || 'sandbox') as PlaidEnvironmentName,
     }
   }

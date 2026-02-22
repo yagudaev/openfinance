@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+
+import { encrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { exchangeCodeForTokens, getGoogleEmail } from '@/lib/services/google-drive'
 
@@ -39,19 +41,19 @@ export async function GET(request: NextRequest) {
     // Get the email associated with this Google account
     const email = await getGoogleEmail(tokens.access_token)
 
-    // Upsert the connection
+    // Upsert the connection with encrypted tokens
     await prisma.googleDriveConnection.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
+        accessToken: encrypt(tokens.access_token),
+        refreshToken: encrypt(tokens.refresh_token),
         expiresAt,
         email,
       },
       update: {
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
+        accessToken: encrypt(tokens.access_token),
+        refreshToken: encrypt(tokens.refresh_token),
         expiresAt,
         email,
       },

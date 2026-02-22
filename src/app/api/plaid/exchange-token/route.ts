@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { encrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { getPlaidClientForUser } from '@/lib/plaid'
 import { syncPlaidTransactions } from '@/lib/services/plaid-sync'
@@ -34,11 +35,11 @@ export async function POST(request: NextRequest) {
 
     const { access_token, item_id } = exchangeResponse.data
 
-    // Store the connection
+    // Store the connection with encrypted access token
     const connection = await prisma.plaidConnection.create({
       data: {
         userId: session.user.id,
-        accessToken: access_token,
+        accessToken: encrypt(access_token),
         itemId: item_id,
         institutionId: institution?.institution_id || 'unknown',
         institutionName: institution?.name || 'Unknown Institution',

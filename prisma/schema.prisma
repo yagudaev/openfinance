@@ -316,7 +316,7 @@ model PlaidConnection {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   institutionId   String
   institutionName String
-  accessToken     String    // TODO: encrypt at rest
+  accessToken     String    // Encrypted at rest via src/lib/encryption.ts
   itemId          String    @unique
   cursor          String?   // Plaid sync cursor for incremental updates
   status          String    @default("active") // active | error | disconnected

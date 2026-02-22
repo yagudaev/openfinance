@@ -1,5 +1,6 @@
 import { PlaidApi, Transaction as PlaidTransaction, RemovedTransaction } from 'plaid'
 
+import { decrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 
 interface SyncResult {
@@ -29,6 +30,7 @@ export async function syncPlaidTransactions(
     throw new Error('Unauthorized')
   }
 
+  const accessToken = decrypt(connection.accessToken)
   let cursor = connection.cursor
   const allAdded: PlaidTransaction[] = []
   const allModified: PlaidTransaction[] = []
@@ -38,7 +40,7 @@ export async function syncPlaidTransactions(
   try {
     while (hasMore) {
       const response = await client.transactionsSync({
-        access_token: connection.accessToken,
+        access_token: accessToken,
         cursor: cursor ?? undefined,
       })
 
