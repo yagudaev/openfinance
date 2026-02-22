@@ -39,7 +39,7 @@ export function DocumentUploader() {
           .map(f => f.name)
           .filter(Boolean)
 
-        await fetch('/api/jobs/create-upload-job', {
+        const res = await fetch('/api/jobs/create-upload-job', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -47,6 +47,19 @@ export function DocumentUploader() {
             fileNames,
           }),
         })
+
+        const result = await res.json()
+
+        if (res.ok && result.jobId) {
+          toast.success(`Uploaded ${fileNames.length} files`, {
+            action: {
+              label: 'View details',
+              onClick: () => {
+                window.location.href = `/jobs/${result.jobId}`
+              },
+            },
+          })
+        }
       } catch {
         // Non-critical — don't block the user
       }
