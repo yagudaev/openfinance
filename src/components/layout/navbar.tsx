@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ListChecks,
+  Landmark,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -24,6 +25,7 @@ import { UserAvatar } from '@/components/user-avatar'
 const navItems = [
   { href: '/chat', label: 'Home', icon: MessageSquare },
   { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: '/net-worth', label: 'Net Worth', icon: Landmark },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/expenses', label: 'Expenses', icon: PieChart },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
