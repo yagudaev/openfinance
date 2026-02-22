@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
-import { UploadDocumentDialog } from '@/components/documents/upload-document-dialog'
+import { DocumentUploader } from '@/components/documents/document-uploader'
 
 interface DocumentsPageProps {
   searchParams: Promise<{
@@ -46,8 +46,9 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
             Upload and manage your financial documents.
           </p>
         </div>
-        <UploadDocumentDialog />
       </div>
+
+      <DocumentUploader />
 
       <DocumentFilters search={search} documentType={documentType} />
 
