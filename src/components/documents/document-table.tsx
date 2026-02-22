@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Eye,
   Loader2,
+  Zap,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -71,6 +72,7 @@ function DocumentRow({
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [processingAsStatement, setProcessingAsStatement] = useState(false)
 
   const uploadDate = new Date(document.uploadedAt)
   const formattedDate = uploadDate.toLocaleDateString('en-US', {
@@ -98,6 +100,51 @@ function DocumentRow({
       link.href = `/api/documents/${document.id}`
       link.download = document.fileName
       link.click()
+    }
+  }
+
+  async function handleProcessAsStatement() {
+    setMenuOpen(false)
+    setProcessingAsStatement(true)
+
+    const toastId = toast.loading('Processing statement...', {
+      description: document.fileName,
+    })
+
+    try {
+      const res = await fetch('/api/documents/process-as-statement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: document.id }),
+      })
+
+      const result = await res.json()
+
+      if (res.status === 409 && result.isDuplicate) {
+        toast.warning('Duplicate statement', {
+          id: toastId,
+          description: document.fileName,
+        })
+      } else if (!res.ok) {
+        toast.error('Processing failed', {
+          id: toastId,
+          description: result.error || document.fileName,
+        })
+      } else {
+        const txCount = result.data?.transactionCount ?? 0
+        toast.success('Statement processed!', {
+          id: toastId,
+          description: `${txCount} transactions extracted from ${document.fileName}`,
+        })
+        router.refresh()
+      }
+    } catch (error) {
+      toast.error('Processing failed', {
+        id: toastId,
+        description: error instanceof Error ? error.message : document.fileName,
+      })
+    } finally {
+      setProcessingAsStatement(false)
     }
   }
 
@@ -195,6 +242,21 @@ function DocumentRow({
                   <Eye className="h-4 w-4" />
                   View
                 </button>
+                {document.source === 'document' &&
+                  document.mimeType === 'application/pdf' &&
+                  document.documentType === 'statement' && (
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+                    onClick={handleProcessAsStatement}
+                    disabled={processingAsStatement}
+                  >
+                    {processingAsStatement
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Zap className="h-4 w-4" />
+                    }
+                    {processingAsStatement ? 'Processing...' : 'Process as Statement'}
+                  </button>
+                )}
                 {document.source === 'statement' && document.statementId && (
                   <button
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
