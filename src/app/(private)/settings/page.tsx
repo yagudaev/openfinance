@@ -7,6 +7,7 @@ import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
 import { GoogleDriveConnection } from '@/components/settings/google-drive-connection'
 import { ExpenseCategories } from '@/components/settings/expense-categories'
+import { DeleteAccount } from '@/components/settings/delete-account'
 import { getPlaidCredentials } from '@/lib/plaid'
 
 export default async function SettingsPage() {
@@ -72,6 +73,8 @@ export default async function SettingsPage() {
           plaidSecret={settings.plaidSecret}
           plaidEnvironment={settings.plaidEnvironment}
         />
+
+        <DeleteAccount />
       </div>
     </div>
   )
