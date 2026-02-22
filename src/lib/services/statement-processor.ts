@@ -112,10 +112,12 @@ export async function processStatement(
     where: { userId },
   })
   const bankTimezone = settings?.bankTimezone || 'America/Vancouver'
+  const aiModel = settings?.aiModel || 'gpt-4o-mini'
 
   const { statement, extractedData, verification } = await extractAndVerify(
     pdfText,
     bankTimezone,
+    aiModel,
     fileName,
     filePath,
     fileSize,
@@ -150,6 +152,7 @@ export async function processStatement(
 async function extractAndVerify(
   pdfText: string,
   bankTimezone: string,
+  aiModel: string,
   fileName: string,
   filePath: string,
   fileSize: number,
@@ -163,7 +166,7 @@ async function extractAndVerify(
     console.info(`Iteration ${i + 1} of ${MAX_ITERATIONS}`)
 
     const { data: extractedData, llmResponse, filteredTransactions } =
-      await extractDataFromText(pdfText, bankTimezone, prevMessages)
+      await extractDataFromText(pdfText, bankTimezone, aiModel, prevMessages)
 
     const existingStatementId =
       reprocessStatementId || (i > 0 ? statement?.id : undefined)
@@ -235,6 +238,7 @@ Respond in JSON format like in the system prompt.`,
 async function extractDataFromText(
   pdfText: string,
   bankTimezone: string,
+  aiModel: string,
   prevMessages: ChatCompletionMessageParam[],
 ): Promise<{
   data: BankStatementData
@@ -255,7 +259,7 @@ ${pdfText}`,
   ]
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: aiModel,
     messages: [
       { role: 'system', content: getSystemPrompt(bankTimezone) },
       ...messages,
