@@ -640,7 +640,7 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
           <button
             type="button"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen(prev => !prev)}
             className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
             title="View conversations"
           >
