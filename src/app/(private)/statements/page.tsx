@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { UploadButton } from '@/components/statements/upload-button'
+import { StatementUploader } from '@/components/statements/statement-uploader'
 import { formatDate } from '@/lib/utils/date'
 import Link from 'next/link'
 
@@ -27,8 +27,9 @@ export default async function StatementsPage() {
             Upload and manage your bank statements.
           </p>
         </div>
-        <UploadButton />
       </div>
+
+      <StatementUploader />
 
       <div className="mt-6">
         {statements.length === 0 ? (
