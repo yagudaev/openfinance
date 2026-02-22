@@ -113,10 +113,9 @@ export async function processStatement(
     where: { userId },
   })
   const bankTimezone = settings?.bankTimezone || 'America/Vancouver'
-  // Statement processing uses OpenAI directly — only allow OpenAI model IDs.
-  // User preferences like "openrouter/..." are for chat only.
-  const rawModel = settings?.aiModel || 'gpt-4o-mini'
-  const aiModel = rawModel.startsWith('openrouter/') ? 'gpt-4o-mini' : rawModel
+  // Statement processing always uses gpt-4o-mini via OpenAI directly.
+  // User's chat model preference may be an OpenRouter model which is incompatible.
+  const aiModel = 'gpt-4o-mini'
 
   const { statement, extractedData, verification } = await extractAndVerify(
     pdfText,
