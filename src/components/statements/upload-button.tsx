@@ -14,16 +14,6 @@ interface ImportedStatement {
   status: string
 }
 
-interface ProcessResult {
-  id: string
-  fileName: string
-  success: boolean
-  transactionCount?: number
-  isBalanced?: boolean
-  isDuplicate?: boolean
-  error?: string
-}
-
 export function UploadButton() {
   const [uploading, setUploading] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -33,45 +23,6 @@ export function UploadButton() {
   const router = useRouter()
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
-
-  async function processImportedStatement(
-    stmt: ImportedStatement,
-    index: number,
-    total: number,
-    batchToastId: string | number,
-  ): Promise<ProcessResult> {
-    toast.loading(`Processing ${index + 1} of ${total} statements...`, {
-      id: batchToastId,
-      description: stmt.fileName,
-    })
-
-    const processRes = await fetch(`/api/statements/${stmt.id}/reprocess`, {
-      method: 'POST',
-    })
-
-    const result = await processRes.json()
-
-    if (processRes.status === 409 && result.isDuplicate) {
-      return { id: stmt.id, fileName: stmt.fileName, success: false, isDuplicate: true }
-    }
-
-    if (!processRes.ok) {
-      return {
-        id: stmt.id,
-        fileName: stmt.fileName,
-        success: false,
-        error: result.error || 'Processing failed',
-      }
-    }
-
-    return {
-      id: stmt.id,
-      fileName: stmt.fileName,
-      success: true,
-      transactionCount: result.data?.transactionCount ?? 0,
-      isBalanced: result.data?.isBalanced,
-    }
-  }
 
   async function handleFiles(files: FileList | File[]) {
     const fileArray = Array.from(files)
@@ -198,52 +149,38 @@ export function UploadButton() {
         return
       }
 
-      // Phase 2: Process each imported statement sequentially
-      const results: ProcessResult[] = []
+      // Phase 2: Create a Job and process via bulk endpoint
+      toast.loading(`Starting batch processing for ${imported.length} statements...`, {
+        id: batchToastId,
+      })
 
-      for (let i = 0; i < imported.length; i++) {
-        const result = await processImportedStatement(
-          imported[i],
-          i,
-          imported.length,
-          batchToastId,
-        )
-        results.push(result)
-      }
+      const processRes = await fetch('/api/statements/process-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: imported.map(stmt => ({
+            filePath: stmt.fileUrl,
+            fileName: stmt.fileName,
+            fileSize: stmt.fileSize,
+            statementId: stmt.id,
+          })),
+        }),
+      })
 
-      // Summarize results
-      const succeeded = results.filter(r => r.success)
-      const duplicates = results.filter(r => r.isDuplicate)
-      const failed = results.filter(r => !r.success && !r.isDuplicate)
-      const totalTransactions = succeeded.reduce((sum, r) => sum + (r.transactionCount ?? 0), 0)
+      const processResult = await processRes.json()
 
-      const parts: string[] = []
-      if (succeeded.length > 0) {
-        parts.push(`${succeeded.length} processed (${totalTransactions} transactions)`)
-      }
-      if (duplicates.length > 0) {
-        parts.push(`${duplicates.length} duplicate${duplicates.length > 1 ? 's' : ''}`)
-      }
-      if (failed.length > 0) {
-        parts.push(`${failed.length} failed`)
-      }
-
-      if (failed.length > 0 && succeeded.length === 0) {
-        toast.error('Batch processing failed', {
+      if (!processRes.ok) {
+        toast.error('Failed to start batch processing', {
           id: batchToastId,
-          description: parts.join(' · '),
+          description: processResult.error || 'Unknown error',
         })
-      } else if (failed.length > 0 || duplicates.length > 0) {
-        toast.warning('Batch complete with issues', {
-          id: batchToastId,
-          description: parts.join(' · '),
-        })
-      } else {
-        toast.success('All statements processed!', {
-          id: batchToastId,
-          description: parts.join(' · '),
-        })
+        return
       }
+
+      toast.success(`Processing ${processResult.totalItems} statements`, {
+        id: batchToastId,
+        description: 'Track progress via the floating indicator or the Jobs page',
+      })
 
       router.refresh()
     } catch (error) {
