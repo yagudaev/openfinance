@@ -1,6 +1,7 @@
 import { CATEGORIES } from '@/lib/constants/categories'
 import { openai } from '@/lib/openai'
 import { prisma } from '@/lib/prisma'
+import { getActiveCategories } from '@/lib/services/expense-categories'
 
 interface CategorizationResult {
   transactionId: string
@@ -50,7 +51,7 @@ export async function categorizeTransactions(
         : undefined,
     }))
 
-    const categorizations = await categorizeBatch(toProcess)
+    const categorizations = await categorizeBatch(toProcess, userId)
 
     let categorizedCount = 0
     for (const result of categorizations) {
@@ -72,6 +73,26 @@ export async function categorizeTransactions(
   }
 }
 
+async function buildCategoryPrompt(userId: string): Promise<{ descriptions: string; names: string[] }> {
+  // Try user's custom categories first
+  const userCategories = await getActiveCategories(userId)
+
+  if (userCategories.length > 0) {
+    const descriptions = userCategories
+      .map(c => `- "${c.name}": ${c.description || c.name}`)
+      .join('\n')
+    const names = userCategories.map(c => c.name)
+    return { descriptions, names }
+  }
+
+  // Fall back to legacy hardcoded categories
+  const descriptions = CATEGORIES.map(
+    c => `- "${c.value}": ${c.label}`,
+  ).join('\n')
+  const names = CATEGORIES.map(c => c.value)
+  return { descriptions, names }
+}
+
 async function categorizeBatch(
   transactions: Array<{
     id: string
@@ -82,28 +103,23 @@ async function categorizeBatch(
     account_number?: string | null
     account_nickname?: string
   }>,
+  userId: string,
 ): Promise<CategorizationResult[]> {
-  const categoryDescriptions = CATEGORIES.map(
-    c => `- ${c.value}: ${c.label}`,
-  ).join('\n')
+  const { descriptions, names } = await buildCategoryPrompt(userId)
+  const categoryEnum = names.map(n => `"${n}"`).join(' | ')
 
   const systemMessage = `You are a financial transaction categorization assistant. Categorize each transaction into one of these categories:
 
-${categoryDescriptions}
+${descriptions}
 
-Rules:
-- "expense" - costs like supplies, services, rent, utilities
-- "owner-pay" - withdrawals/payments to the business owner (dividends)
-- "income" - revenue, sales, customer payments
-- "internal-transfer" - transfers between accounts (keywords: transfer, e-transfer, interac)
-- "shareholder-loan" - owner lends money to the company (deposit/credit from owner)
+Pick the single best category for each transaction based on the description and amount. Use the category names exactly as listed above.
 
 Respond with JSON:
 {
   "categorizations": [
     {
       "transactionId": "uuid",
-      "category": "expense" | "owner-pay" | "income" | "internal-transfer" | "shareholder-loan",
+      "category": ${categoryEnum},
       "confidence": 0.0-1.0
     }
   ]
@@ -128,7 +144,7 @@ Respond with JSON:
     console.error('Error in LLM categorization:', error)
     return transactions.map(t => ({
       transactionId: t.id,
-      category: 'expense',
+      category: names[0] || 'expense',
       confidence: 0.1,
     }))
   }

@@ -6,6 +6,7 @@ import { SettingsForm } from '@/components/settings/settings-form'
 import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
 import { GoogleDriveConnection } from '@/components/settings/google-drive-connection'
+import { ExpenseCategories } from '@/components/settings/expense-categories'
 import { getPlaidCredentials } from '@/lib/plaid'
 
 export default async function SettingsPage() {
@@ -59,6 +60,8 @@ export default async function SettingsPage() {
             ownershipType: a.ownershipType,
           }))}
         />
+
+        <ExpenseCategories />
 
         <ConnectedBanks plaidConfigured={plaidConfigured} />
 
