@@ -36,8 +36,8 @@ test.describe('Smoke Test: Authenticated Pages', () => {
   test('all main pages are accessible', async ({ page }) => {
     // Dashboard
     await page.goto('/dashboard')
-    await expect(page.getByText(/Monthly Income/)).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(/Monthly Expenses/)).toBeVisible()
+    await expect(page.getByText(/Monthly Income/).first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/Monthly Expenses/).first()).toBeVisible()
 
     // Transactions
     await page.goto('/transactions')
@@ -63,7 +63,7 @@ test.describe('Smoke Test: Authenticated Pages', () => {
     await expect(page.getByText('Fiscal Year End')).toBeVisible()
     await expect(page.getByText('AI Model')).toBeVisible()
 
-    await page.getByRole('button', { name: /save/i }).click()
+    await page.getByRole('button', { name: /save/i }).first().click()
     await expect(page.getByText(/saved|updated/i)).toBeVisible({ timeout: 5_000 })
   })
 
