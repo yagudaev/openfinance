@@ -367,6 +367,9 @@ function Footer() {
           >
             Documentation
           </a>
+          <Link href="/terms" className="hover:text-foreground">
+            Terms of Service
+          </Link>
           <Link href="/privacy" className="hover:text-foreground">
             Privacy Policy
           </Link>
