@@ -16,6 +16,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { DOCUMENT_TYPES } from './document-types'
+import { classifyByFilename } from '@/lib/services/document-classifier'
 
 export function UploadDocumentDialog() {
   const [open, setOpen] = useState(false)
@@ -60,14 +61,20 @@ export function UploadDocumentDialog() {
 
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
-      setSelectedFile(files[0])
+      const file = files[0]
+      setSelectedFile(file)
+      const detected = classifyByFilename(file.name)
+      if (detected) setDocumentType(detected)
     }
   }, [])
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (files && files.length > 0) {
-      setSelectedFile(files[0])
+      const file = files[0]
+      setSelectedFile(file)
+      const detected = classifyByFilename(file.name)
+      if (detected) setDocumentType(detected)
     }
   }
 
