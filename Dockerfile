@@ -19,6 +19,7 @@ COPY --from=deps /app/prisma ./prisma
 COPY --from=deps /app/src/generated ./src/generated
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN yarn build
 
 # Production image
