@@ -31,9 +31,10 @@ model User {
   processingJobs   ProcessingJob[]
   chatThreads      ChatThread[]
   chatTraces       ChatTrace[]
-  plaidConnections PlaidConnection[]
-  documents        Document[]
-  jobs             Job[]
+  plaidConnections      PlaidConnection[]
+  documents             Document[]
+  jobs                  Job[]
+  googleDriveConnection GoogleDriveConnection?
 }
 
 model Session {
@@ -324,26 +325,44 @@ model PlaidConnection {
 }
 
 // ============================================================
+// Google Drive integration
+// ============================================================
+
+model GoogleDriveConnection {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  email        String?   // Google account email for display
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ============================================================
 // Document library
 // ============================================================
 
 model Document {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fileName     String
-  fileUrl      String   // Relative path under data/uploads/documents/
-  fileSize     Int
-  mimeType     String
-  documentType String   @default("other") // statement | tax | investment | receipt | other
-  tags         String?  // Comma-separated tags
-  description  String?
-  uploadedAt   DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName          String
+  fileUrl           String   // Relative path under data/uploads/documents/
+  fileSize          Int
+  mimeType          String
+  documentType      String   @default("other") // statement | tax | investment | receipt | other
+  tags              String?  // Comma-separated tags
+  description       String?
+  googleDriveFileId String?  // Google Drive file ID for tracking imported files
+  uploadedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([userId])
   @@index([userId, documentType])
+  @@index([googleDriveFileId])
 }
 
 // ============================================================
