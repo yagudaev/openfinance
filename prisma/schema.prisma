@@ -33,6 +33,7 @@ model User {
   chatTraces       ChatTrace[]
   plaidConnections PlaidConnection[]
   documents        Document[]
+  jobs             Job[]
 }
 
 model Session {
@@ -340,4 +341,42 @@ model Document {
 
   @@index([userId])
   @@index([userId, documentType])
+}
+
+// ============================================================
+// Background jobs
+// ============================================================
+
+model Job {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           String    // "file_processing", "reprocessing", "plaid_sync"
+  status         String    @default("pending") // pending, running, completed, failed
+  progress       Int       @default(0) // 0-100
+  totalItems     Int       @default(0)
+  completedItems Int       @default(0)
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  items JobItem[]
+
+  @@index([userId])
+}
+
+model JobItem {
+  id          String    @id @default(cuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fileName    String
+  status      String    @default("pending") // pending, running, completed, failed
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([jobId])
 }

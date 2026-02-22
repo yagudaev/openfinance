@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  ListChecks,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/statements', label: 'Statements', icon: FileText },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
+  { href: '/jobs', label: 'Jobs', icon: ListChecks },
 ]
 
 export function Navbar() {
