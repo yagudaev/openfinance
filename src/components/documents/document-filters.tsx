@@ -6,14 +6,14 @@ import { Search } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { DOCUMENT_TYPES } from './document-types'
+import { DOCUMENT_CATEGORIES } from './document-types'
 
 interface DocumentFiltersProps {
   search: string
-  documentType: string
+  category: string
 }
 
-export function DocumentFilters({ search, documentType }: DocumentFiltersProps) {
+export function DocumentFilters({ search, category }: DocumentFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchValue, setSearchValue] = useState(search)
@@ -47,22 +47,22 @@ export function DocumentFilters({ search, documentType }: DocumentFiltersProps) 
           />
         </form>
 
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <Button
-            variant={!documentType ? 'default' : 'outline'}
+            variant={!category ? 'default' : 'outline'}
             size="sm"
-            onClick={() => updateParam('type', '')}
+            onClick={() => updateParam('category', '')}
           >
             All
           </Button>
-          {DOCUMENT_TYPES.map(type => (
+          {DOCUMENT_CATEGORIES.map(cat => (
             <Button
-              key={type.value}
-              variant={documentType === type.value ? 'default' : 'outline'}
+              key={cat.value}
+              variant={category === cat.value ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateParam('type', type.value === documentType ? '' : type.value)}
+              onClick={() => updateParam('category', cat.value === category ? '' : cat.value)}
             >
-              {type.label}
+              {cat.label}
             </Button>
           ))}
         </div>

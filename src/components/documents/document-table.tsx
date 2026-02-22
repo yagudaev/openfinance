@@ -2,13 +2,15 @@
 
 import {
   FileText,
-  Image,
+  Image as ImageIcon,
   FileSpreadsheet,
   File,
   Download,
   Trash2,
-  Tag,
   MoreHorizontal,
+  RefreshCw,
+  Eye,
+  Loader2,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,8 +19,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   type DocumentItem,
-  formatFileSize,
-  getDocumentTypeColor,
+  type DocumentStatus,
+  getCategoryColor,
+  getStatusColor,
   getFileIcon,
 } from './document-types'
 
@@ -34,7 +37,7 @@ function FileIcon({ mimeType }: { mimeType: string }) {
     case 'pdf':
       return <FileText className={className} />
     case 'image':
-      return <Image className={className} />
+      return <ImageIcon className={className} />
     case 'spreadsheet':
       return <FileSpreadsheet className={className} />
     default:
@@ -42,7 +45,29 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   }
 }
 
-function DocumentRow({ document }: { document: DocumentItem }) {
+function StatusBadge({ status }: { status: DocumentStatus }) {
+  const colorClasses = getStatusColor(status)
+  const isProcessing = status === 'processing'
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${colorClasses}`}>
+      {isProcessing && (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      )}
+      {status}
+    </span>
+  )
+}
+
+function DocumentRow({
+  document,
+  selected,
+  onToggleSelect,
+}: {
+  document: DocumentItem
+  selected: boolean
+  onToggleSelect: () => void
+}) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -55,14 +80,25 @@ function DocumentRow({ document }: { document: DocumentItem }) {
   })
 
   function handleView() {
-    window.open(`/api/documents/${document.id}`, '_blank')
+    if (document.source === 'statement' && document.statementId) {
+      window.location.href = `/statements/${document.statementId}`
+    } else {
+      window.open(`/api/documents/${document.id}`, '_blank')
+    }
   }
 
   function handleDownload() {
-    const link = window.document.createElement('a')
-    link.href = `/api/documents/${document.id}`
-    link.download = document.fileName
-    link.click()
+    if (document.source === 'statement' && document.statementId) {
+      const link = window.document.createElement('a')
+      link.href = `/api/statements/${document.statementId}/pdf`
+      link.download = document.fileName
+      link.click()
+    } else {
+      const link = window.document.createElement('a')
+      link.href = `/api/documents/${document.id}`
+      link.download = document.fileName
+      link.click()
+    }
   }
 
   async function handleDelete() {
@@ -70,8 +106,15 @@ function DocumentRow({ document }: { document: DocumentItem }) {
 
     setDeleting(true)
     try {
-      const res = await fetch(`/api/documents/${document.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Delete failed')
+      if (document.source === 'statement' && document.statementId) {
+        const res = await fetch(`/api/documents/statements/${document.statementId}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) throw new Error('Delete failed')
+      } else {
+        const res = await fetch(`/api/documents/${document.id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error('Delete failed')
+      }
 
       toast.success('Document deleted')
       router.refresh()
@@ -83,10 +126,16 @@ function DocumentRow({ document }: { document: DocumentItem }) {
     }
   }
 
-  const tags = document.tags?.split(',').map(t => t.trim()).filter(Boolean) ?? []
-
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className={`hover:bg-gray-50 ${selected ? 'bg-violet-50' : ''}`}>
+      <td className="whitespace-nowrap px-4 py-4">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+        />
+      </td>
       <td className="whitespace-nowrap px-6 py-4">
         <div className="flex items-center gap-3">
           <FileIcon mimeType={document.mimeType} />
@@ -104,29 +153,19 @@ function DocumentRow({ document }: { document: DocumentItem }) {
           </div>
         </div>
       </td>
+      <td className="whitespace-nowrap px-6 py-4">
+        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getCategoryColor(document.documentType)}`}>
+          {document.documentType}
+        </span>
+      </td>
+      <td className="whitespace-nowrap px-6 py-4">
+        <StatusBadge status={document.status} />
+      </td>
       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
         {formattedDate}
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-        {formatFileSize(document.fileSize)}
-      </td>
-      <td className="whitespace-nowrap px-6 py-4">
-        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getDocumentTypeColor(document.documentType)}`}>
-          {document.documentType}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex flex-wrap gap-1">
-          {tags.map(tag => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-            >
-              <Tag className="h-3 w-3" />
-              {tag}
-            </span>
-          ))}
-        </div>
+        {document.accountName || '\u2014'}
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-right">
         <div className="relative inline-block">
@@ -145,7 +184,7 @@ function DocumentRow({ document }: { document: DocumentItem }) {
                 className="fixed inset-0 z-40"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 z-50 mt-1 w-40 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 z-50 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                 <button
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   onClick={() => {
@@ -153,9 +192,22 @@ function DocumentRow({ document }: { document: DocumentItem }) {
                     handleView()
                   }}
                 >
-                  <FileText className="h-4 w-4" />
+                  <Eye className="h-4 w-4" />
                   View
                 </button>
+                {document.source === 'statement' && document.statementId && (
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      // Reprocess is handled from the statement detail page
+                      window.location.href = `/statements/${document.statementId}`
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Reprocess
+                  </button>
+                )}
                 <button
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   onClick={() => {
@@ -183,7 +235,113 @@ function DocumentRow({ document }: { document: DocumentItem }) {
   )
 }
 
+function BulkActionBar({
+  selectedCount,
+  onDeselectAll,
+  onDeleteSelected,
+}: {
+  selectedCount: number
+  onDeselectAll: () => void
+  onDeleteSelected: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+      <span className="text-sm font-medium text-violet-700">
+        {selectedCount} document{selectedCount !== 1 ? 's' : ''} selected
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDeselectAll}
+          className="text-gray-700"
+        >
+          Deselect All
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onDeleteSelected}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Selected
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function DocumentTable({ documents }: DocumentTableProps) {
+  const router = useRouter()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
+  const allSelected = documents.length > 0 && selectedIds.size === documents.length
+  const someSelected = selectedIds.size > 0
+
+  function handleToggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(documents.map(d => d.id)))
+    }
+  }
+
+  function handleToggleOne(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function handleDeselectAll() {
+    setSelectedIds(new Set())
+  }
+
+  async function handleDeleteSelected() {
+    const count = selectedIds.size
+    if (!confirm(`Delete ${count} document${count !== 1 ? 's' : ''}? This cannot be undone.`)) return
+
+    setBulkDeleting(true)
+    let deleted = 0
+    let failed = 0
+
+    for (const id of selectedIds) {
+      const doc = documents.find(d => d.id === id)
+      if (!doc) continue
+
+      try {
+        if (doc.source === 'statement' && doc.statementId) {
+          const res = await fetch(`/api/documents/statements/${doc.statementId}`, {
+            method: 'DELETE',
+          })
+          if (!res.ok) throw new Error()
+        } else {
+          const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error()
+        }
+        deleted++
+      } catch {
+        failed++
+      }
+    }
+
+    if (failed > 0) {
+      toast.warning(`Deleted ${deleted}, failed to delete ${failed}`)
+    } else {
+      toast.success(`Deleted ${deleted} document${deleted !== 1 ? 's' : ''}`)
+    }
+
+    setSelectedIds(new Set())
+    setBulkDeleting(false)
+    router.refresh()
+  }
+
   if (documents.length === 0) {
     return (
       <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center">
@@ -196,36 +354,69 @@ export function DocumentTable({ documents }: DocumentTableProps) {
   }
 
   return (
-    <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              File
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Uploaded
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Size
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Type
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Tags
-            </th>
-            <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {documents.map(doc => (
-            <DocumentRow key={doc.id} document={doc} />
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-6 space-y-3">
+      {someSelected && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onDeselectAll={handleDeselectAll}
+          onDeleteSelected={handleDeleteSelected}
+        />
+      )}
+
+      {bulkDeleting && (
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Deleting selected documents...
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={el => {
+                    if (el) el.indeterminate = someSelected && !allSelected
+                  }}
+                  onChange={handleToggleAll}
+                  className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Category
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Account
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {documents.map(doc => (
+              <DocumentRow
+                key={`${doc.source}-${doc.id}`}
+                document={doc}
+                selected={selectedIds.has(doc.id)}
+                onToggleSelect={() => handleToggleOne(doc.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

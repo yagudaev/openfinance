@@ -27,6 +27,6 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('link', { name: 'Home' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Transactions' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Statements' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Documents' })).toBeVisible()
   })
 })
