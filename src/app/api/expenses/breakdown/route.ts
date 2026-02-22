@@ -77,7 +77,7 @@ function getDateRange(
   }
 }
 
-const EXPENSE_CATEGORIES = ['expense', 'owner-pay']
+const DEBIT_TYPE = 'debit'
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
       by: ['category'],
       where: {
         userId,
-        category: { in: EXPENSE_CATEGORIES },
+        transactionType: DEBIT_TYPE,
         transactionDate: { gte: start, lte: end },
       },
       _sum: { amount: true },
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
       by: ['category'],
       where: {
         userId,
-        category: { in: EXPENSE_CATEGORIES },
+        transactionType: DEBIT_TYPE,
         transactionDate: { gte: prevStart, lte: prevEnd },
       },
       _sum: { amount: true },
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
     by: ['category', 'description'],
     where: {
       userId,
-      category: { in: EXPENSE_CATEGORIES },
+      transactionType: DEBIT_TYPE,
       transactionDate: { gte: start, lte: end },
     },
     _sum: { amount: true },

@@ -39,7 +39,7 @@ export async function getDashboard(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: 'income',
+          transactionType: 'credit',
           transactionDate: {
             gte: startOfMonth(lastMonth),
             lte: endOfMonth(lastMonth),
@@ -51,7 +51,7 @@ export async function getDashboard(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: { in: ['expense', 'owner-pay'] },
+          transactionType: 'debit',
           transactionDate: {
             gte: startOfMonth(lastMonth),
             lte: endOfMonth(lastMonth),
@@ -63,7 +63,7 @@ export async function getDashboard(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: 'income',
+          transactionType: 'credit',
           transactionDate: {
             gte: startOfMonth(prevMonth),
             lte: endOfMonth(prevMonth),
@@ -75,7 +75,7 @@ export async function getDashboard(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: { in: ['expense', 'owner-pay'] },
+          transactionType: 'debit',
           transactionDate: {
             gte: startOfMonth(prevMonth),
             lte: endOfMonth(prevMonth),
@@ -134,7 +134,7 @@ async function getCashflowData(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: 'income',
+          transactionType: 'credit',
           transactionDate: { gte: monthStart, lte: monthEnd },
           ...ownershipWhere,
         },
@@ -143,7 +143,7 @@ async function getCashflowData(
       prisma.transaction.aggregate({
         where: {
           userId,
-          category: { in: ['expense', 'owner-pay'] },
+          transactionType: 'debit',
           transactionDate: { gte: monthStart, lte: monthEnd },
           ...ownershipWhere,
         },
