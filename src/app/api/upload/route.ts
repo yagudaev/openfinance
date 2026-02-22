@@ -1,8 +1,8 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { writeFile } from 'fs/promises'
+import { prepareUpload } from '@/lib/upload-path'
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -45,14 +45,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
   }
 
-  const timestamp = Date.now()
-  const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-  const relPath = `attachments/${session.user.id}/${timestamp}_${sanitizedFileName}`
+  const { relPath, fullPath, sanitizedFileName } = await prepareUpload(session.user.id, file.name)
 
-  const uploadDir = join(process.cwd(), 'data', 'uploads', 'attachments', session.user.id)
-  await mkdir(uploadDir, { recursive: true })
-
-  const fullPath = join(process.cwd(), 'data', 'uploads', relPath)
   const buffer = Buffer.from(await file.arrayBuffer())
   await writeFile(fullPath, buffer)
 

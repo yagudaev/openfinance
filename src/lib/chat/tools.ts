@@ -1,7 +1,8 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { readFile, stat } from 'fs/promises'
-import { join, extname } from 'path'
+import { extname } from 'path'
+import { getUploadFullPath } from '@/lib/upload-path'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
 
@@ -507,7 +508,7 @@ export function createChatTools(userId: string) {
         'Read the contents of an uploaded file. Use this to read text files (markdown, CSV, TXT), extract text from PDFs, or examine file contents before deciding how to process them. For bank statement PDFs, prefer using process_statements instead.',
       inputSchema: z.object({
         filePath: z.string().describe(
-          'File path relative to data/uploads/ (from the [Attached file: name (path)] reference)',
+          'File path relative to data/uploads/ (from the [Attached file: name (path)] reference, e.g. "userId/timestamp_file.pdf")',
         ),
       }),
       execute: async ({ filePath }) => {
@@ -516,7 +517,7 @@ export function createChatTools(userId: string) {
         const ext = extname(fileName).toLowerCase()
 
         try {
-          const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
+          const fullPath = getUploadFullPath(filePath)
 
           // Image files — cannot read as text
           if (['.jpg', '.jpeg', '.png'].includes(ext)) {
@@ -582,7 +583,7 @@ export function createChatTools(userId: string) {
         'Process one or more uploaded bank statement PDF files. Extracts transactions from the PDFs using AI, saves them to the database, and categorizes them. Use this when the user uploads PDF files and asks to process their bank statements, import transactions, or mentions uploaded statement files. The filePaths should come from [Attached file: ...] references in the user message.',
       inputSchema: z.object({
         filePaths: z.array(z.string()).describe(
-          'Array of file paths relative to data/uploads/ (e.g. "attachments/userId/timestamp_file.pdf"). These come from the [Attached file: name (path)] references in the user message.',
+          'Array of file paths relative to data/uploads/ (e.g. "userId/timestamp_file.pdf"). These come from the [Attached file: name (path)] references in the user message.',
         ),
       }),
       execute: async ({ filePaths }) => {
@@ -603,7 +604,7 @@ export function createChatTools(userId: string) {
 
           try {
             // Read PDF from disk
-            const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
+            const fullPath = getUploadFullPath(filePath)
             const pdfBuffer = await readFile(fullPath)
             const fileStats = await stat(fullPath)
 

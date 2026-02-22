@@ -6,7 +6,7 @@ import {
 } from 'openai/resources/chat/completions.mjs'
 import { reconcileProvisionalTransactions } from '@/lib/services/plaid-sync'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { getUploadFullPath } from '@/lib/upload-path'
 
 // pdf-parse v1 has no proper ESM/TS types — use require
 const pdfParse = require('pdf-parse')
@@ -48,7 +48,7 @@ export async function processStatementById(
     }
 
     // Read PDF from disk
-    const fullPath = join(process.cwd(), 'data', 'uploads', statement.fileUrl)
+    const fullPath = getUploadFullPath(statement.fileUrl)
     const pdfBuffer = await readFile(fullPath)
     const pdfData = await pdfParse(pdfBuffer)
     const pdfText: string = pdfData.text

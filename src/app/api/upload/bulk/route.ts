@@ -1,8 +1,8 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { writeFile } from 'fs/promises'
+import { prepareUpload } from '@/lib/upload-path'
 import JSZip from 'jszip'
 
 interface UploadedFile {
@@ -16,14 +16,8 @@ async function savePdf(
   fileName: string,
   userId: string,
 ): Promise<UploadedFile> {
-  const timestamp = Date.now()
-  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
-  const relPath = `statements/${userId}/${timestamp}_${sanitizedFileName}`
+  const { relPath, fullPath, sanitizedFileName } = await prepareUpload(userId, fileName)
 
-  const uploadDir = join(process.cwd(), 'data', 'uploads', 'statements', userId)
-  await mkdir(uploadDir, { recursive: true })
-
-  const fullPath = join(process.cwd(), 'data', 'uploads', relPath)
   await writeFile(fullPath, buffer)
 
   return {
