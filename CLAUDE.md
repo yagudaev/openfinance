@@ -68,12 +68,20 @@ When working through Linear tickets:
 3. In the worktree, run `yarn install --immutable && yarn db:generate` before any work
 4. After changes, verify with `npx tsc --noEmit`
 5. Rebase on latest main, commit, push, create PR via `gh pr create`
-6. Wait for CI (Lint & Typecheck + E2E Tests must pass; Mintlify failure is external — ignore)
-7. Merge with `gh pr merge N --squash --delete-branch`
+6. Wait for CI (Lint, Typecheck & Build + E2E Tests must pass; Mintlify failure is external — ignore)
+7. Enqueue PR in merge queue: `gh pr merge N --squash --delete-branch --auto`
 8. Clean up: `git worktree remove ../openfinance-nan-XXX --force`
 9. Update Linear ticket to "Done"
 
 Multiple tickets can run in parallel using separate worktrees. When branches touch the same file, merge the first PR then rebase the second.
+
+### Merge Rules
+
+- **NEVER merge PRs directly** — all PRs go through the merge queue via `--auto`
+- **NEVER use `gh pr merge` without `--auto`** — direct merges bypass the merge queue and can break main
+- The merge queue runs CI checks against the PR rebased on the latest main, ensuring no broken code lands
+- If CI fails in the merge queue, the PR is automatically dequeued — fix the issue, push again, and re-enqueue
+- Use `gh pr merge N --squash --delete-branch --auto` to enqueue (this is the ONLY approved merge command)
 
 ## Critical Rules
 
