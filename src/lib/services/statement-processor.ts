@@ -5,8 +5,100 @@ import {
   ChatCompletionMessageParam,
 } from 'openai/resources/chat/completions.mjs'
 import { reconcileProvisionalTransactions } from '@/lib/services/plaid-sync'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
+
+// pdf-parse v1 has no proper ESM/TS types — use require
+const pdfParse = require('pdf-parse')
 
 const MAX_ITERATIONS = 3
+
+/**
+ * Process a statement by its database ID.
+ * Reads the file from disk, extracts text, runs AI processing,
+ * and updates the statement record with results.
+ */
+export async function processStatementById(
+  statementId: string,
+  userId: string,
+) {
+  const statement = await prisma.bankStatement.findFirst({
+    where: { id: statementId, userId },
+  })
+
+  if (!statement) {
+    throw new Error('Statement not found')
+  }
+
+  // Set status to processing
+  await prisma.bankStatement.update({
+    where: { id: statementId },
+    data: { status: 'processing', errorMessage: null },
+  })
+
+  try {
+    // Clean up previous processing data if reprocessing
+    if (statement.isProcessed || statement.status === 'done' || statement.status === 'error') {
+      await prisma.transaction.deleteMany({
+        where: { statementId },
+      })
+      await prisma.balanceVerification.deleteMany({
+        where: { statementId },
+      })
+    }
+
+    // Read PDF from disk
+    const fullPath = join(process.cwd(), 'data', 'uploads', statement.fileUrl)
+    const pdfBuffer = await readFile(fullPath)
+    const pdfData = await pdfParse(pdfBuffer)
+    const pdfText: string = pdfData.text
+
+    if (!pdfText || pdfText.trim().length === 0) {
+      await prisma.bankStatement.update({
+        where: { id: statementId },
+        data: {
+          status: 'error',
+          errorMessage: 'Could not extract text from PDF. The file may be scanned/image-based.',
+        },
+      })
+      throw new Error('Could not extract text from PDF. The file may be scanned/image-based.')
+    }
+
+    // Process with AI
+    const result = await processStatement(
+      pdfText,
+      statement.fileName,
+      statement.fileUrl,
+      statement.fileSize,
+      userId,
+      statementId,
+    )
+
+    // Mark as done
+    await prisma.bankStatement.update({
+      where: { id: statementId },
+      data: { status: 'done' },
+    })
+
+    return result
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Processing failed'
+
+    // Only update to error if not already set (e.g. duplicate detection)
+    const current = await prisma.bankStatement.findUnique({
+      where: { id: statementId },
+      select: { status: true },
+    })
+    if (current?.status === 'processing') {
+      await prisma.bankStatement.update({
+        where: { id: statementId },
+        data: { status: 'error', errorMessage },
+      })
+    }
+
+    throw error
+  }
+}
 
 export async function processStatement(
   pdfText: string,
@@ -268,16 +360,27 @@ async function saveStatement(
   bankTimezone: string,
   existingStatementId?: string,
 ) {
+  const bankAccountId = await getOrCreateBankAccountId(
+    userId,
+    data.accountNumber,
+    data.bankName || 'Unknown Bank',
+  )
+
   if (existingStatementId) {
     return prisma.bankStatement.update({
       where: { id: existingStatementId },
       data: {
+        bankAccountId,
         bankName: data.bankName || 'Unknown Bank',
+        accountNumber: data.accountNumber,
         statementDate: new Date(data.statementDate || data.periodEnd),
+        periodStart: new Date(data.periodStart),
+        periodEnd: new Date(data.periodEnd),
         openingBalance: data.openingBalance,
         closingBalance: data.closingBalance,
         totalDeposits: data.totalDeposits,
         totalWithdrawals: data.totalWithdrawals,
+        status: 'done',
         isProcessed: true,
         processedAt: new Date(),
         processingTimezone: bankTimezone,
@@ -285,13 +388,7 @@ async function saveStatement(
     })
   }
 
-  const bankAccountId = await getOrCreateBankAccountId(
-    userId,
-    data.accountNumber,
-    data.bankName || 'Unknown Bank',
-  )
-
-  // Check for duplicate
+  // Check for duplicate (only when creating a new statement, not reprocessing)
   const existing = await prisma.bankStatement.findFirst({
     where: {
       userId,
@@ -312,12 +409,15 @@ async function saveStatement(
     return prisma.bankStatement.update({
       where: { id: existing.id },
       data: {
+        bankAccountId,
         bankName: data.bankName || 'Unknown Bank',
+        accountNumber: data.accountNumber,
         statementDate: new Date(data.statementDate || data.periodEnd),
         openingBalance: data.openingBalance,
         closingBalance: data.closingBalance,
         totalDeposits: data.totalDeposits,
         totalWithdrawals: data.totalWithdrawals,
+        status: 'done',
         isProcessed: true,
         processedAt: new Date(),
         processingTimezone: bankTimezone,
@@ -341,6 +441,7 @@ async function saveStatement(
       closingBalance: data.closingBalance,
       totalDeposits: data.totalDeposits,
       totalWithdrawals: data.totalWithdrawals,
+      status: 'done',
       isProcessed: true,
       processedAt: new Date(),
       processingTimezone: bankTimezone,

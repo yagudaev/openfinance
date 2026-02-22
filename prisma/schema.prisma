@@ -147,13 +147,15 @@ model BankStatement {
   duplicateOf        String?
   bankName           String
   accountNumber      String?
-  statementDate      DateTime
-  periodStart        DateTime
-  periodEnd          DateTime
-  openingBalance     Float
-  closingBalance     Float
+  statementDate      DateTime?
+  periodStart        DateTime?
+  periodEnd          DateTime?
+  openingBalance     Float?
+  closingBalance     Float?
   totalDeposits      Float?
   totalWithdrawals   Float?
+  status             String    @default("pending") // pending | processing | done | error
+  errorMessage       String?
   isProcessed        Boolean   @default(false)
   processedAt        DateTime?
   processingTimezone String?
@@ -168,6 +170,7 @@ model BankStatement {
 
   @@index([userId])
   @@index([contentHash])
+  @@index([status])
 }
 
 model Transaction {
