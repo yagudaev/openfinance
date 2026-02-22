@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, UIMessage } from 'ai'
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Send,
   Bot,
@@ -29,6 +30,8 @@ import {
   Bug,
   AlertTriangle,
   XCircle,
+  Link,
+  Check,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
@@ -403,16 +406,16 @@ interface ChatInterfaceProps {
   isNewUser?: boolean
 }
 
-export function ChatInterface({ threadId: initialThreadId, initialMessages = [], initialTraceIds = {}, isNewUser = false }: ChatInterfaceProps) {
+export function ChatInterface({ threadId, initialMessages = [], initialTraceIds = {}, isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
-  const [threadId, setThreadId] = useState(initialThreadId)
-  const [traceIds, setTraceIds] = useState<Record<string, string>>(initialTraceIds)
+  const router = useRouter()
+  const [traceIds] = useState<Record<string, string>>(initialTraceIds)
   const [input, setInput] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [isLoadingThread, setIsLoadingThread] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const threadIdRef = useRef(threadId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounterRef = useRef(0)
@@ -431,7 +434,7 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
   )
   /* eslint-enable react-hooks/refs */
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status } = useChat({
     transport,
     messages: initialMessages,
   })
@@ -507,45 +510,21 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
   async function handleNewThread() {
     const res = await fetch('/api/chat/threads', { method: 'POST' })
     const data = await res.json()
-    setThreadId(data.threadId)
-    setMessages([])
-    setTraceIds({})
-    setAttachedFile(null)
+    router.push(`/chat/${data.threadId}`)
   }
 
-  async function handleSelectThread(selectedThreadId: string) {
+  function handleSelectThread(selectedThreadId: string) {
     if (selectedThreadId === threadId) return
+    router.push(`/chat/${selectedThreadId}`)
+  }
 
-    setIsLoadingThread(true)
+  async function handleCopyLink() {
     try {
-      const res = await fetch(`/api/chat/threads/${selectedThreadId}/messages`)
-      if (!res.ok) {
-        console.error('Failed to load thread messages')
-        return
-      }
-      const data = await res.json()
-
-      const loadedMessages: UIMessage[] = data.messages.map((m: { id: string; role: string; content: string }) => ({
-        id: m.id,
-        role: m.role as 'user' | 'assistant',
-        parts: [{ type: 'text' as const, text: m.content }],
-      }))
-
-      const loadedTraceIds: Record<string, string> = {}
-      for (const m of data.messages as { id: string; traceId?: string | null }[]) {
-        if (m.traceId) {
-          loadedTraceIds[m.id] = m.traceId
-        }
-      }
-
-      setThreadId(selectedThreadId)
-      setMessages(loadedMessages)
-      setTraceIds(loadedTraceIds)
-      setAttachedFile(null)
-    } catch (error) {
-      console.error('Failed to switch thread:', error)
-    } finally {
-      setIsLoadingThread(false)
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy link:', err)
     }
   }
 
@@ -629,13 +608,6 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
           </div>
         )}
 
-        {/* Loading overlay when switching threads */}
-        {isLoadingThread && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/60">
-            <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
-          </div>
-        )}
-
         {/* Header with sidebar toggle and new conversation button */}
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
           <button
@@ -646,16 +618,36 @@ export function ChatInterface({ threadId: initialThreadId, initialMessages = [],
           >
             <PanelLeftOpen className="h-4 w-4" />
           </button>
-          {messages.length > 0 && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleNewThread}
-              disabled={isLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              title="Copy link to conversation"
             >
-              <Plus className="h-3.5 w-3.5" />
-              New conversation
+              {linkCopied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Link className="h-3.5 w-3.5" />
+                  Copy link
+                </>
+              )}
             </button>
-          )}
+            {messages.length > 0 && (
+              <button
+                onClick={handleNewThread}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New conversation
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
