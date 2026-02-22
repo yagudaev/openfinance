@@ -13,6 +13,11 @@ const STATEMENT_PATTERNS: RegExp[] = [
   /\bbank\b.*\d{4}/i,
   /\baccount\b.*\d{4}/i,
   /\bacct\b.*\d{4}/i,
+  /\bchequ(e|ing)\b/i,
+  /\bsavings?\b/i,
+  /\bcredit.?card\b/i,
+  /\bvisa\b.*\d{4}/i,
+  /\bmastercard\b/i,
 ]
 
 const TAX_PATTERNS: RegExp[] = [
