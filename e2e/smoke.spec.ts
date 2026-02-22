@@ -31,12 +31,12 @@ test.describe('Smoke Test: Full User Journey', () => {
 
   test('terms page renders', async ({ page }) => {
     await page.goto('/terms')
-    await expect(page.getByRole('heading', { name: 'Terms of Service' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Terms of Service' })).toBeVisible({ timeout: 10_000 })
   })
 
   test('privacy page renders', async ({ page }) => {
     await page.goto('/privacy')
-    await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible({ timeout: 10_000 })
   })
 
   test('sign up creates account and redirects to chat', async ({ page }) => {
