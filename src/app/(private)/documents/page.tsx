@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import Link from 'next/link'
 
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
@@ -123,6 +124,14 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         <div className="flex items-center gap-2">
           <DriveImportSheet />
         </div>
+      </div>
+
+      <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        To extract transactions from bank statements, use the{' '}
+        <Link href="/statements" className="font-medium underline underline-offset-2 hover:text-blue-900">
+          Statements page
+        </Link>
+        . Documents stored here are for reference only.
       </div>
 
       <DocumentUploader />

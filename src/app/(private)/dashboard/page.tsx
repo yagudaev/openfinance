@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { subMonths, format } from 'date-fns'
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 
 import { auth } from '@/lib/auth'
 import {
@@ -25,7 +26,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams
   const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
 
-  const { stats, cashflowData } = await getDashboard(
+  const { stats, cashflowData, totalTransactions } = await getDashboard(
     session.user.id,
     ownershipFilter,
   )
@@ -85,6 +86,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
         <OwnershipFilter value={ownershipFilter} />
       </div>
+
+      {totalTransactions === 0 && (
+        <div className="mb-8 rounded-lg border border-gray-200 bg-white p-10 text-center">
+          <h2 className="text-lg font-semibold text-gray-900">No transactions yet</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Upload a bank statement to automatically extract and categorize your transactions.
+          </p>
+          <Link
+            href="/statements"
+            className="mt-6 inline-block rounded-md bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Go to Statements
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statsCards.map((stat, index) => {
