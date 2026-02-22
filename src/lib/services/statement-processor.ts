@@ -5,6 +5,7 @@ import {
   ChatCompletionMessageParam,
 } from 'openai/resources/chat/completions.mjs'
 import { reconcileProvisionalTransactions } from '@/lib/services/plaid-sync'
+import { categorizeTransactions } from '@/lib/services/transaction-categorizer'
 import { readFile } from 'fs/promises'
 import { getUploadFullPath } from '@/lib/upload-path'
 
@@ -140,12 +141,35 @@ export async function processStatement(
     // Non-fatal: statement processing still succeeds
   }
 
+  // Auto-categorize extracted transactions so Dashboard/Expenses pages show data
+  let categorizedCount = 0
+  try {
+    if (statement?.id) {
+      const transactions = await prisma.transaction.findMany({
+        where: { statementId: statement.id, userId },
+        select: { id: true },
+      })
+
+      if (transactions.length > 0) {
+        const catResult = await categorizeTransactions(
+          transactions.map(t => t.id),
+          userId,
+        )
+        categorizedCount = catResult.categorized
+      }
+    }
+  } catch (error) {
+    console.error('Auto-categorization error:', error)
+    // Non-fatal: transactions are still saved, just uncategorized
+  }
+
   return {
     success: true,
     statement,
     transactionCount: extractedData.transactions?.length || 0,
+    categorizedCount,
     isBalanced: verification.isBalanced,
-    message: `Successfully processed ${extractedData.transactions?.length || 0} transactions`,
+    message: `Successfully processed ${extractedData.transactions?.length || 0} transactions (${categorizedCount} categorized)`,
   }
 }
 
