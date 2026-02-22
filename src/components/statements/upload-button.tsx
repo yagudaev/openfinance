@@ -6,13 +6,16 @@ import { useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-interface UploadedFile {
-  filePath: string
+interface ImportedStatement {
+  id: string
   fileName: string
-  size: number
+  fileUrl: string
+  fileSize: number
+  status: string
 }
 
 interface ProcessResult {
+  id: string
   fileName: string
   success: boolean
   transactionCount?: number
@@ -31,43 +34,39 @@ export function UploadButton() {
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
 
-  async function processFile(
-    file: UploadedFile,
+  async function processImportedStatement(
+    stmt: ImportedStatement,
     index: number,
     total: number,
     batchToastId: string | number,
   ): Promise<ProcessResult> {
     toast.loading(`Processing ${index + 1} of ${total} statements...`, {
       id: batchToastId,
-      description: file.fileName,
+      description: stmt.fileName,
     })
 
-    const processRes = await fetch('/api/process-statement', {
+    const processRes = await fetch(`/api/statements/${stmt.id}/reprocess`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filePath: file.filePath,
-        fileName: file.fileName,
-        fileSize: file.size,
-      }),
     })
 
     const result = await processRes.json()
 
     if (processRes.status === 409 && result.isDuplicate) {
-      return { fileName: file.fileName, success: false, isDuplicate: true }
+      return { id: stmt.id, fileName: stmt.fileName, success: false, isDuplicate: true }
     }
 
     if (!processRes.ok) {
       return {
-        fileName: file.fileName,
+        id: stmt.id,
+        fileName: stmt.fileName,
         success: false,
         error: result.error || 'Processing failed',
       }
     }
 
     return {
-      fileName: file.fileName,
+      id: stmt.id,
+      fileName: stmt.fileName,
       success: true,
       transactionCount: result.data?.transactionCount ?? 0,
       isBalanced: result.data?.isBalanced,
@@ -78,7 +77,7 @@ export function UploadButton() {
     const fileArray = Array.from(files)
     if (fileArray.length === 0) return
 
-    // For a single PDF (not zip), use the original simple flow
+    // For a single PDF (not zip), use the simple flow
     if (fileArray.length === 1 && !fileArray[0].name.toLowerCase().endsWith('.zip')) {
       await handleSingleFile(fileArray[0])
       return
@@ -89,35 +88,35 @@ export function UploadButton() {
 
   async function handleSingleFile(file: File) {
     setUploading(true)
-    const toastId = toast.loading('Uploading PDF...', {
+    const toastId = toast.loading('Importing statement...', {
       description: file.name,
     })
 
     try {
+      // Phase 1: Import (store file + create DB record)
       const formData = new FormData()
       formData.append('file', file)
 
-      const uploadRes = await fetch('/api/upload', {
+      const importRes = await fetch('/api/statements/import', {
         method: 'POST',
         body: formData,
       })
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json()
-        throw new Error(err.error || 'Upload failed')
+      if (!importRes.ok) {
+        const err = await importRes.json()
+        throw new Error(err.error || 'Import failed')
       }
 
-      const { filePath, fileName, size } = await uploadRes.json()
+      const { statement } = await importRes.json() as { statement: ImportedStatement }
 
+      // Phase 2: Process (extract text + AI processing)
       toast.loading('Processing with AI...', {
         id: toastId,
-        description: `${fileName} — Extracting text and analyzing transactions`,
+        description: `${statement.fileName} — Extracting text and analyzing transactions`,
       })
 
-      const processRes = await fetch('/api/process-statement', {
+      const processRes = await fetch(`/api/statements/${statement.id}/reprocess`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath, fileName, fileSize: size }),
       })
 
       const result = await processRes.json()
@@ -125,7 +124,7 @@ export function UploadButton() {
       if (processRes.status === 409 && result.isDuplicate) {
         toast.warning('Duplicate statement', {
           id: toastId,
-          description: `${fileName} has already been uploaded`,
+          description: `${statement.fileName} has already been uploaded`,
         })
         return
       }
@@ -149,6 +148,7 @@ export function UploadButton() {
         id: toastId,
         description: error instanceof Error ? error.message : 'Unknown error',
       })
+      router.refresh()
     } finally {
       setUploading(false)
       resetInputs()
@@ -157,52 +157,57 @@ export function UploadButton() {
 
   async function handleBulkUpload(files: File[]) {
     setUploading(true)
-    const batchToastId = toast.loading(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`, {
+    const batchToastId = toast.loading(`Importing ${files.length} file${files.length > 1 ? 's' : ''}...`, {
       description: 'Preparing upload...',
     })
 
     try {
-      // Upload all files via bulk endpoint
+      // Phase 1: Bulk import (store files + create DB records)
       const formData = new FormData()
       for (const file of files) {
         formData.append('files', file)
       }
 
-      const uploadRes = await fetch('/api/upload/bulk', {
+      const importRes = await fetch('/api/statements/import/bulk', {
         method: 'POST',
         body: formData,
       })
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json()
-        throw new Error(err.error || 'Upload failed')
+      if (!importRes.ok) {
+        const err = await importRes.json()
+        throw new Error(err.error || 'Import failed')
       }
 
-      const { uploaded, errors: uploadErrors } = await uploadRes.json() as {
-        uploaded: UploadedFile[]
-        errors: { fileName: string, error: string }[]
+      const { imported, errors: importErrors } = await importRes.json() as {
+        imported: ImportedStatement[]
+        errors: { fileName: string; error: string }[]
       }
 
-      // Show upload errors
-      for (const err of uploadErrors) {
-        toast.error(`Upload failed: ${err.fileName}`, {
+      // Show import errors
+      for (const err of importErrors) {
+        toast.error(`Import failed: ${err.fileName}`, {
           description: err.error,
         })
       }
 
-      if (uploaded.length === 0) {
-        toast.error('No files uploaded', {
+      if (imported.length === 0) {
+        toast.error('No files imported', {
           id: batchToastId,
           description: 'No valid PDF files were found',
         })
         return
       }
 
-      // Process each uploaded file sequentially
+      // Phase 2: Process each imported statement sequentially
       const results: ProcessResult[] = []
 
-      for (let i = 0; i < uploaded.length; i++) {
-        const result = await processFile(uploaded[i], i, uploaded.length, batchToastId)
+      for (let i = 0; i < imported.length; i++) {
+        const result = await processImportedStatement(
+          imported[i],
+          i,
+          imported.length,
+          batchToastId,
+        )
         results.push(result)
       }
 
@@ -247,6 +252,7 @@ export function UploadButton() {
         id: batchToastId,
         description: error instanceof Error ? error.message : 'Unknown error',
       })
+      router.refresh()
     } finally {
       setUploading(false)
       resetInputs()

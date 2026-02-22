@@ -3,6 +3,8 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { StatementUploader } from '@/components/statements/statement-uploader'
+import { StatementStatusBadge } from '@/components/statements/statement-status-badge'
+import { ReprocessButton } from '@/components/statements/reprocess-button'
 import { formatDate } from '@/lib/utils/date'
 import Link from 'next/link'
 
@@ -12,7 +14,7 @@ export default async function StatementsPage() {
 
   const statements = await prisma.bankStatement.findMany({
     where: { userId: session.user.id },
-    orderBy: { periodEnd: 'desc' },
+    orderBy: [{ status: 'asc' }, { periodEnd: 'desc' }],
     include: {
       _count: { select: { transactions: true } },
     },
@@ -58,6 +60,9 @@ export default async function StatementsPage() {
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -72,9 +77,15 @@ export default async function StatementsPage() {
                       </Link>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {formatDate(statement.periodStart.toISOString(), 'MMM dd, yyyy')}
-                      {' — '}
-                      {formatDate(statement.periodEnd.toISOString(), 'MMM dd, yyyy')}
+                      {statement.periodStart && statement.periodEnd ? (
+                        <>
+                          {formatDate(statement.periodStart.toISOString(), 'MMM dd, yyyy')}
+                          {' — '}
+                          {formatDate(statement.periodEnd.toISOString(), 'MMM dd, yyyy')}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {statement.accountNumber || '—'}
@@ -83,15 +94,17 @@ export default async function StatementsPage() {
                       {statement._count.transactions}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                      <span className={
-                        statement.verificationStatus === 'verified'
-                          ? 'inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700'
-                          : statement.verificationStatus === 'unbalanced'
-                            ? 'inline-flex rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700'
-                            : 'inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700'
-                      }>
-                        {statement.verificationStatus || 'pending'}
-                      </span>
+                      <StatementStatusBadge
+                        status={statement.status}
+                        verificationStatus={statement.verificationStatus}
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
+                      <ReprocessButton
+                        statementId={statement.id}
+                        fileName={statement.fileName}
+                        status={statement.status}
+                      />
                     </td>
                   </tr>
                 ))}
