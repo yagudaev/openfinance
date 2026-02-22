@@ -14,13 +14,15 @@ test.describe('Smoke Test: Full User Journey', () => {
 
     // Hero section
     await expect(page.getByRole('heading', { name: /engineer your/i })).toBeVisible()
-    await expect(page.getByText('Open Source')).toBeVisible()
-    await expect(page.getByText('Self-Hosted')).toBeVisible()
-    await expect(page.getByText('Privacy-First')).toBeVisible()
+
+    // Hero badges (use .first() since text appears in multiple sections)
+    await expect(page.getByText('Open Source').first()).toBeVisible()
+    await expect(page.getByText('Self-Hosted').first()).toBeVisible()
+    await expect(page.getByText('Privacy-First').first()).toBeVisible()
 
     // Features section
     await expect(page.getByText('AI-Powered Extraction')).toBeVisible()
-    await expect(page.getByText('Self-Hosted Privacy')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Self-Hosted Privacy' })).toBeVisible()
 
     // Footer links
     await expect(page.getByRole('link', { name: 'Terms of Service' })).toBeVisible()
