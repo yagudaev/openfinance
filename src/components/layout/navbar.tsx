@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home,
   Receipt,
+  PieChart,
   FolderOpen,
   MessageSquare,
   Settings,
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/chat', label: 'Home', icon: MessageSquare },
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
+  { href: '/expenses', label: 'Expenses', icon: PieChart },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
   { href: '/jobs', label: 'Jobs', icon: ListChecks },
 ]
