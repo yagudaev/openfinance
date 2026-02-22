@@ -66,7 +66,7 @@ function collectFiles(dir: string, rootDir: string): FileInfo[] {
             name: basename(entry),
             size: stat.size,
             relativePath: relPath,
-            documentType: 'statement',
+            documentType: classifyByPath(relPath, entry),
           })
         } else if (REFERENCE_EXTENSIONS.has(ext)) {
           files.push({
@@ -84,6 +84,64 @@ function collectFiles(dir: string, rootDir: string): FileInfo[] {
   }
 
   return files
+}
+
+/**
+ * Classify a PDF by its directory path and filename.
+ * Uses the directory structure to determine document type.
+ */
+function classifyByPath(relPath: string, filename: string): string {
+  const lowerPath = relPath.toLowerCase()
+  const lowerName = filename.toLowerCase()
+
+  // Tax-related files
+  if (lowerPath.includes('tax filing') || lowerPath.includes('tax docs') ||
+      lowerPath.includes('tax package') || lowerPath.includes('t-slips') ||
+      lowerPath.includes('t4') || lowerPath.includes('t5') ||
+      lowerPath.includes('cra communication') || lowerPath.includes('return') ||
+      lowerName.includes('tax') || lowerName.includes('t4') ||
+      lowerName.includes('t5') || lowerName.includes('notice of assessment') ||
+      lowerName.includes('filing')) {
+    return 'tax'
+  }
+
+  // Receipts and invoices
+  if (lowerPath.includes('receipt') || lowerPath.includes('reciept') ||
+      lowerPath.includes('recipet') || lowerPath.includes('invoice') ||
+      lowerName.includes('receipt') || lowerName.includes('invoice') ||
+      lowerName.includes('inv-')) {
+    return 'receipt'
+  }
+
+  // Bills
+  if (lowerPath.includes('bills') || lowerPath.includes('bill')) {
+    return 'receipt'
+  }
+
+  // Agreements and other non-statement docs
+  if (lowerPath.includes('agreement') || lowerPath.includes('payroll') ||
+      lowerPath.includes('e-transfer') || lowerName.includes('agreement')) {
+    return 'other'
+  }
+
+  // Investment statements
+  if (lowerPath.includes('investment') || lowerPath.includes('direct investing') ||
+      lowerName.includes('investment')) {
+    return 'investment'
+  }
+
+  // Bank statements (most common case — directories with statement-like names)
+  if (lowerPath.includes('bank statement') || lowerPath.includes('credit card') ||
+      lowerPath.includes('primary') || lowerPath.includes('savings') ||
+      lowerPath.includes('chequing') || lowerPath.includes('chequ') ||
+      lowerPath.includes('us incoming') || lowerPath.includes('visa') ||
+      lowerPath.includes('mastercard') || lowerPath.includes('candain tire') ||
+      lowerName.includes('statement')) {
+    return 'statement'
+  }
+
+  // Default: classify as statement since most files in these dirs are statements
+  return 'statement'
 }
 
 async function login(baseUrl: string): Promise<string> {
