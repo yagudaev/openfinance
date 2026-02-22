@@ -5,6 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { prisma } from '@/lib/prisma'
 import { downloadDriveFile, refreshAccessToken } from '@/lib/services/google-drive'
+import { classifyByFilename } from '@/lib/services/document-classifier'
 
 interface ImportRequest {
   fileIds: string[]
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
 
         await writeFile(fullPath, buffer)
 
+        const documentType = classifyByFilename(fileName) ?? 'other'
+
         const document = await prisma.document.create({
           data: {
             userId: session.user.id,
@@ -106,7 +109,7 @@ export async function POST(request: NextRequest) {
             fileUrl: relPath,
             fileSize: buffer.length,
             mimeType: 'application/pdf',
-            documentType: 'other',
+            documentType,
             googleDriveFileId: fileId,
             description: 'Imported from Google Drive',
           },

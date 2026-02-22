@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { prisma } from '@/lib/prisma'
+import { classifyByFilename } from '@/lib/services/document-classifier'
 
 const ALLOWED_TYPES = new Set([
   'application/pdf',
@@ -22,7 +23,7 @@ const ALLOWED_EXTENSIONS = new Set([
 ])
 
 const DOCUMENT_TYPES = new Set([
-  'statement', 'tax', 'investment', 'receipt', 'other',
+  'statement', 'tax', 'investment', 'receipt', 'spreadsheet', 'other',
 ])
 
 export async function POST(request: NextRequest) {
@@ -33,13 +34,18 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData()
   const file = formData.get('file') as File
-  const documentType = (formData.get('documentType') as string) || 'other'
+  const requestedType = (formData.get('documentType') as string) || 'other'
   const description = (formData.get('description') as string) || null
   const tags = (formData.get('tags') as string) || null
 
   if (!file) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
+
+  // Use filename-based classification when the type is the default 'other'
+  const documentType = requestedType === 'other'
+    ? classifyByFilename(file.name) ?? 'other'
+    : requestedType
 
   if (!DOCUMENT_TYPES.has(documentType)) {
     return NextResponse.json(
