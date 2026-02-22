@@ -36,6 +36,8 @@ model User {
   jobs                  Job[]
   googleDriveConnection GoogleDriveConnection?
   expenseCategories     ExpenseCategory[]
+  netWorthAccounts      NetWorthAccount[]
+  netWorthSnapshots     NetWorthSnapshot[]
 }
 
 model Session {
@@ -425,4 +427,44 @@ model ExpenseCategory {
   @@unique([userId, name])
   @@index([userId])
   @@index([userId, isActive])
+}
+
+// ============================================================
+// Net Worth tracking
+// ============================================================
+
+model NetWorthAccount {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  accountType    String   // "asset" | "liability"
+  category       String   // checking | savings | investment | crypto | real-estate | vehicle | credit-card | loan | mortgage | other
+  currentBalance Float    @default(0)
+  currency       String   @default("CAD")
+  isManual       Boolean  @default(true)
+  bankAccountId  String?  // Optional link to existing BankAccount
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, accountType])
+}
+
+model NetWorthSnapshot {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             DateTime
+  totalAssets      Float
+  totalLiabilities Float
+  netWorth         Float
+  accountsJson     String?  // JSON snapshot of per-account balances at this point in time
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([userId, date])
 }
