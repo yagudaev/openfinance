@@ -86,5 +86,23 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  return NextResponse.json({ success: true, document })
+  // When the file is a statement PDF, also create a BankStatement record
+  // so it can be queued for AI processing by the frontend
+  let statementId: string | null = null
+  const isPdf = file.type === 'application/pdf' || extension === 'pdf'
+  if (documentType === 'statement' && isPdf) {
+    const statement = await prisma.bankStatement.create({
+      data: {
+        userId: session.user.id,
+        fileName: sanitizedFileName,
+        fileUrl: relPath,
+        fileSize: file.size,
+        bankName: 'Unknown',
+        status: 'pending',
+      },
+    })
+    statementId = statement.id
+  }
+
+  return NextResponse.json({ success: true, document, statementId })
 }

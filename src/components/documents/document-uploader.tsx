@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { UppyUploader } from '@/components/upload/uppy-uploader'
+import { showJobProgressToast } from '@/lib/jobs/job-toast'
 
 interface UploadedDoc {
   name: string
@@ -32,37 +33,24 @@ export function DocumentUploader() {
       toast.error(`Upload failed: ${file.name}`)
     }
 
-    // Create a Job record for bulk uploads so they appear on the Jobs page
-    if (successful.length > 1) {
-      try {
-        const fileNames = successful
-          .map(f => f.name)
-          .filter(Boolean)
-
-        const res = await fetch('/api/jobs/create-upload-job', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'file_processing',
-            fileNames,
-          }),
-        })
-
-        const result = await res.json()
-
-        if (res.ok && result.jobId) {
-          toast.success(`Uploaded ${fileNames.length} files`, {
-            action: {
-              label: 'View details',
-              onClick: () => {
-                window.location.href = `/jobs/${result.jobId}`
-              },
-            },
-          })
+    // Collect statement IDs from uploads classified as statements
+    const statementsToProcess = successful
+      .filter(f => f.response?.body?.statementId)
+      .map(f => {
+        const doc = f.response!.body.document as { fileUrl: string; fileSize: number }
+        return {
+          filePath: doc.fileUrl,
+          fileName: f.name,
+          fileSize: doc.fileSize,
+          statementId: f.response!.body.statementId as string,
         }
-      } catch {
-        // Non-critical — don't block the user
-      }
+      })
+
+    // Trigger AI processing for any statement PDFs
+    if (statementsToProcess.length === 1) {
+      await processSingleStatement(statementsToProcess[0])
+    } else if (statementsToProcess.length > 1) {
+      await processBulkStatements(statementsToProcess)
     }
 
     if (successful.length > 0) {
@@ -86,4 +74,83 @@ export function DocumentUploader() {
       />
     </div>
   )
+}
+
+async function processSingleStatement(file: {
+  filePath: string
+  fileName: string
+  fileSize: number
+  statementId: string
+}) {
+  const toastId = toast.loading('Processing statement...', {
+    description: file.fileName,
+  })
+
+  try {
+    const res = await fetch('/api/process-statement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath: file.filePath,
+        fileName: file.fileName,
+        fileSize: file.fileSize,
+        statementId: file.statementId,
+      }),
+    })
+
+    const result = await res.json()
+
+    if (res.status === 409 && result.isDuplicate) {
+      toast.warning('Duplicate statement', {
+        id: toastId,
+        description: file.fileName,
+      })
+    } else if (!res.ok) {
+      toast.error('Processing failed', {
+        id: toastId,
+        description: result.error || file.fileName,
+      })
+    } else {
+      const txCount = result.data?.transactionCount ?? 0
+      toast.success('Statement processed!', {
+        id: toastId,
+        description: `${txCount} transactions extracted from ${file.fileName}`,
+      })
+    }
+  } catch (error) {
+    toast.error('Processing failed', {
+      id: toastId,
+      description: error instanceof Error ? error.message : file.fileName,
+    })
+  }
+}
+
+async function processBulkStatements(files: Array<{
+  filePath: string
+  fileName: string
+  fileSize: number
+  statementId: string
+}>) {
+  try {
+    const res = await fetch('/api/statements/process-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files }),
+    })
+
+    const result = await res.json()
+
+    if (!res.ok) {
+      toast.error('Failed to start batch processing', {
+        description: result.error || 'Unknown error',
+      })
+      return
+    }
+
+    showJobProgressToast(result.jobId, files.length)
+  } catch (error) {
+    toast.error('Failed to start batch processing', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 }
