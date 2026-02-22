@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
+import { GoogleDriveConnection } from '@/components/settings/google-drive-connection'
 import { getPlaidCredentials } from '@/lib/plaid'
 
 export default async function SettingsPage() {
@@ -24,6 +25,10 @@ export default async function SettingsPage() {
 
   const plaidCredentials = await getPlaidCredentials(session.user.id)
   const plaidConfigured = plaidCredentials !== null
+
+  const googleConfigured = !!(
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  )
 
   return (
     <div>
@@ -56,6 +61,8 @@ export default async function SettingsPage() {
         />
 
         <ConnectedBanks plaidConfigured={plaidConfigured} />
+
+        <GoogleDriveConnection googleConfigured={googleConfigured} />
 
         <PlaidKeysForm
           plaidClientId={settings.plaidClientId}
