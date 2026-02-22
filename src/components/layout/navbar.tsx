@@ -7,6 +7,7 @@ import {
   Home,
   Receipt,
   FileText,
+  FolderOpen,
   MessageSquare,
   Settings,
   LogOut,
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/statements', label: 'Statements', icon: FileText },
+  { href: '/documents', label: 'Documents', icon: FolderOpen },
 ]
 
 export function Navbar() {
