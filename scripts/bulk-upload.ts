@@ -156,7 +156,10 @@ async function login(baseUrl: string): Promise<string> {
 
   const res = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': baseUrl,
+    },
     body: JSON.stringify({ email, password }),
     redirect: 'manual',
   })
