@@ -113,7 +113,10 @@ export async function processStatement(
     where: { userId },
   })
   const bankTimezone = settings?.bankTimezone || 'America/Vancouver'
-  const aiModel = settings?.aiModel || 'gpt-4o-mini'
+  // Statement processing uses OpenAI directly — only allow OpenAI model IDs.
+  // User preferences like "openrouter/..." are for chat only.
+  const rawModel = settings?.aiModel || 'gpt-4o-mini'
+  const aiModel = rawModel.startsWith('openrouter/') ? 'gpt-4o-mini' : rawModel
 
   const { statement, extractedData, verification } = await extractAndVerify(
     pdfText,
