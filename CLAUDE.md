@@ -90,3 +90,29 @@ Multiple tickets can run in parallel using separate worktrees. When branches tou
 3. **Tailwind v4 syntax**: `bg-black/10` not `bg-opacity-10`
 4. **Path alias**: `@/*` maps to `src/*`
 5. **NEVER commit real financial data** — This app processes bank statements and financial documents. Before staging ANY file, verify it does not contain real personal/financial data (account numbers, addresses, transaction details, balances). Use synthetic/dummy test data for tests. PDFs, CSVs, and database files are especially high-risk. When in doubt, ask the user before committing.
+
+## Before Starting Any Ticket
+1. Spawn a research sub-agent to map the existing codebase related to the task
+   - Find ALL existing routes, components, and services that touch the feature area
+   - Identify duplicate or legacy code that does similar things
+   - List existing patterns and conventions to follow
+2. Write a brief implementation plan before coding
+3. Default: refactor/extend existing code. NEVER create new files that duplicate existing functionality
+4. If your change replaces legacy code, DELETE the old code. No dead code.
+5. This is a production app — no experiments unless explicitly told otherwise
+
+## Definition of Done (every ticket)
+A ticket is NOT done until ALL of these pass:
+- [ ] `yarn build` succeeds
+- [ ] No duplicate routes/components created — old ones removed
+- [ ] Integration test exists for the happy path (upload file → verify DB has data)
+- [ ] For upload/processing features: upload a real PDF → verify transactions exist in DB
+- [ ] For UI features: manually verify the page works
+- [ ] For bugs: reproduce → fix → verify fix
+
+## Evaluator Step (before marking any ticket Done)
+Spawn a separate evaluator sub-agent. Give it the ticket description and the files you changed. Ask it:
+- Does this implementation fully satisfy the ticket requirements?
+- Are there any duplicate routes, components, or files that should be consolidated?
+- Does the test actually verify the feature works end-to-end?
+Only mark the ticket Done if the evaluator approves.
