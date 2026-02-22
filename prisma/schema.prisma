@@ -352,7 +352,7 @@ model Document {
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fileName          String
-  fileUrl           String   // Relative path under data/uploads/documents/
+  fileUrl           String   // Relative path under data/uploads/ (e.g. {userId}/{timestamp}_{file})
   fileSize          Int
   mimeType          String
   documentType      String   @default("other") // statement | tax | investment | receipt | other

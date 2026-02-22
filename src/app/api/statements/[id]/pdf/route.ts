@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { getUploadFullPath } from '@/lib/upload-path'
 
 export async function GET(
   _request: Request,
@@ -25,7 +25,7 @@ export async function GET(
   }
 
   try {
-    const filePath = join(process.cwd(), 'data', 'uploads', statement.fileUrl)
+    const filePath = getUploadFullPath(statement.fileUrl)
     const fileBuffer = await readFile(filePath)
 
     return new Response(fileBuffer, {

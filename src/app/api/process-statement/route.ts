@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { getUploadFullPath } from '@/lib/upload-path'
 import { processStatement } from '@/lib/services/statement-processor'
 import { prisma } from '@/lib/prisma'
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     // Read PDF from disk
     await addLog(job.id, ++logSeq, 'info', 'Extracting text from PDF')
-    const fullPath = join(process.cwd(), 'data', 'uploads', filePath)
+    const fullPath = getUploadFullPath(filePath)
     const pdfBuffer = await readFile(fullPath)
 
     // Extract text from PDF

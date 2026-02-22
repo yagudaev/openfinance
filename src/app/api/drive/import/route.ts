@@ -1,9 +1,9 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { writeFile } from 'fs/promises'
 import { prisma } from '@/lib/prisma'
+import { prepareUpload } from '@/lib/upload-path'
 import { downloadDriveFile, refreshAccessToken } from '@/lib/services/google-drive'
 import { classifyByFilename } from '@/lib/services/document-classifier'
 
@@ -79,9 +79,6 @@ export async function POST(request: NextRequest) {
       existingDocs.map(d => d.googleDriveFileId).filter(Boolean),
     )
 
-    const uploadDir = join(process.cwd(), 'data', 'uploads', 'documents', session.user.id)
-    await mkdir(uploadDir, { recursive: true })
-
     const results: { fileId: string; success: boolean; error?: string; documentId?: string }[] = []
 
     for (const fileId of fileIds) {
@@ -93,10 +90,7 @@ export async function POST(request: NextRequest) {
       try {
         const buffer = await downloadDriveFile(accessToken, fileId)
         const fileName = fileNames[fileId] || `drive_${fileId}.pdf`
-        const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
-        const timestamp = Date.now()
-        const relPath = `documents/${session.user.id}/${timestamp}_${sanitizedFileName}`
-        const fullPath = join(process.cwd(), 'data', 'uploads', relPath)
+        const { relPath, fullPath, sanitizedFileName } = await prepareUpload(session.user.id, fileName)
 
         await writeFile(fullPath, buffer)
 

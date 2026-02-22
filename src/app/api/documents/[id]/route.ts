@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { readFile, unlink } from 'fs/promises'
-import { join } from 'path'
+import { getUploadFullPath } from '@/lib/upload-path'
 
 export async function GET(
   _request: NextRequest,
@@ -25,7 +25,7 @@ export async function GET(
   }
 
   try {
-    const filePath = join(process.cwd(), 'data', 'uploads', document.fileUrl)
+    const filePath = getUploadFullPath(document.fileUrl)
     const fileBuffer = await readFile(filePath)
 
     return new Response(fileBuffer, {
@@ -94,7 +94,7 @@ export async function DELETE(
 
   // Delete the file from disk
   try {
-    const filePath = join(process.cwd(), 'data', 'uploads', document.fileUrl)
+    const filePath = getUploadFullPath(document.fileUrl)
     await unlink(filePath)
   } catch {
     // File may already be deleted — continue with DB cleanup
