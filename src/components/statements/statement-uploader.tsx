@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { UppyUploader } from '@/components/upload/uppy-uploader'
+import { showJobProgressToast } from '@/lib/jobs/job-toast'
 
 interface UploadedFile {
   name: string
@@ -116,10 +117,6 @@ async function processBulkFiles(files: UploadedFile[]) {
     return
   }
 
-  const toastId = toast.loading(
-    `Starting batch processing for ${validFiles.length} statements...`,
-  )
-
   try {
     const res = await fetch('/api/statements/process-bulk', {
       method: 'POST',
@@ -137,19 +134,14 @@ async function processBulkFiles(files: UploadedFile[]) {
 
     if (!res.ok) {
       toast.error('Failed to start batch processing', {
-        id: toastId,
         description: result.error || 'Unknown error',
       })
       return
     }
 
-    toast.success(`Processing ${result.totalItems} statements`, {
-      id: toastId,
-      description: 'Track progress via the floating indicator or the Jobs page',
-    })
+    showJobProgressToast(result.jobId, result.totalItems)
   } catch (error) {
     toast.error('Failed to start batch processing', {
-      id: toastId,
       description: error instanceof Error ? error.message : 'Unknown error',
     })
   }

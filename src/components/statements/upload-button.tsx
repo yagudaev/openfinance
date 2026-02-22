@@ -5,6 +5,7 @@ import { ChevronDown, FolderOpen, Loader2, Upload } from 'lucide-react'
 import { useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { showJobProgressToast } from '@/lib/jobs/job-toast'
 
 interface ImportedStatement {
   id: string
@@ -177,10 +178,9 @@ export function UploadButton() {
         return
       }
 
-      toast.success(`Processing ${processResult.totalItems} statements`, {
-        id: batchToastId,
-        description: 'Track progress via the floating indicator or the Jobs page',
-      })
+      // Dismiss the import toast and start the progress toast
+      toast.dismiss(batchToastId)
+      showJobProgressToast(processResult.jobId, processResult.totalItems)
 
       router.refresh()
     } catch (error) {
