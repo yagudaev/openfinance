@@ -367,6 +367,9 @@ function Footer() {
           >
             Documentation
           </a>
+          <Link href="/privacy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
           <span>&copy; 2026 OpenFinance. MIT License.</span>
         </div>
       </div>
