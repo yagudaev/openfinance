@@ -4,21 +4,22 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   DATABASE_URL: 'file:./data/openfinance.db'
   BETTER_AUTH_SECRET: 'ci-test-secret-not-for-production'
   BETTER_AUTH_URL: 'http://localhost:3000'
   OPENAI_API_KEY: 'sk-fake-ci-key'
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Typecheck
+  lint-typecheck-build:
+    name: Lint, Typecheck & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +52,14 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      - name: Initialize database
+        run: |
+          mkdir -p prisma/data
+          yarn db:push
+
+      - name: Build
+        run: yarn build
 
   test:
     name: E2E Tests
