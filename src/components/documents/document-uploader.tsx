@@ -6,6 +6,11 @@ import { toast } from 'sonner'
 
 import { UppyUploader } from '@/components/upload/uppy-uploader'
 
+interface UploadedDoc {
+  name: string
+  response?: { body: Record<string, unknown> }
+}
+
 export function DocumentUploader() {
   const router = useRouter()
 
@@ -19,14 +24,35 @@ export function DocumentUploader() {
     }
   }, [])
 
-  const handleUploadComplete = useCallback((result: { successful: unknown[]; failed: unknown[] }) => {
+  const handleUploadComplete = useCallback(async (result: { successful: unknown[]; failed: unknown[] }) => {
+    const successful = result.successful as UploadedDoc[]
     const failed = result.failed as Array<{ name: string }>
 
     for (const file of failed) {
       toast.error(`Upload failed: ${file.name}`)
     }
 
-    if (result.successful.length > 0) {
+    // Create a Job record for bulk uploads so they appear on the Jobs page
+    if (successful.length > 1) {
+      try {
+        const fileNames = successful
+          .map(f => f.name)
+          .filter(Boolean)
+
+        await fetch('/api/jobs/create-upload-job', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'file_processing',
+            fileNames,
+          }),
+        })
+      } catch {
+        // Non-critical — don't block the user
+      }
+    }
+
+    if (successful.length > 0) {
       router.refresh()
     }
   }, [router])

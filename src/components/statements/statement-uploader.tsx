@@ -6,13 +6,9 @@ import { toast } from 'sonner'
 
 import { UppyUploader } from '@/components/upload/uppy-uploader'
 
-interface ProcessResult {
-  fileName: string
-  success: boolean
-  transactionCount?: number
-  isBalanced?: boolean
-  isDuplicate?: boolean
-  error?: string
+interface UploadedFile {
+  name: string
+  response?: { body: { filePath: string; fileName: string; size: number } }
 }
 
 export function StatementUploader() {
@@ -20,10 +16,7 @@ export function StatementUploader() {
   const [processing, setProcessing] = useState(false)
 
   const handleUploadComplete = useCallback(async (result: { successful: unknown[]; failed: unknown[] }) => {
-    const successful = result.successful as Array<{
-      name: string
-      response?: { body: { filePath: string; fileName: string; size: number } }
-    }>
+    const successful = result.successful as UploadedFile[]
     const failed = result.failed as Array<{ name: string }>
 
     if (failed.length > 0) {
@@ -35,96 +28,11 @@ export function StatementUploader() {
     if (successful.length === 0) return
 
     setProcessing(true)
-    const batchToastId = toast.loading(
-      `Processing ${successful.length} statement${successful.length > 1 ? 's' : ''}...`,
-      { description: 'Extracting text and analyzing transactions' },
-    )
 
-    const results: ProcessResult[] = []
-
-    for (let i = 0; i < successful.length; i++) {
-      const file = successful[i]
-      const body = file.response?.body
-      if (!body) {
-        results.push({ fileName: file.name, success: false, error: 'No upload response' })
-        continue
-      }
-
-      toast.loading(`Processing ${i + 1} of ${successful.length}...`, {
-        id: batchToastId,
-        description: file.name,
-      })
-
-      try {
-        const processRes = await fetch('/api/process-statement', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filePath: body.filePath,
-            fileName: body.fileName,
-            fileSize: body.size,
-          }),
-        })
-
-        const processResult = await processRes.json()
-
-        if (processRes.status === 409 && processResult.isDuplicate) {
-          results.push({ fileName: file.name, success: false, isDuplicate: true })
-        } else if (!processRes.ok) {
-          results.push({
-            fileName: file.name,
-            success: false,
-            error: processResult.error || 'Processing failed',
-          })
-        } else {
-          results.push({
-            fileName: file.name,
-            success: true,
-            transactionCount: processResult.data?.transactionCount ?? 0,
-            isBalanced: processResult.data?.isBalanced,
-          })
-        }
-      } catch (error) {
-        results.push({
-          fileName: file.name,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    }
-
-    // Summarize results
-    const succeeded = results.filter(r => r.success)
-    const duplicates = results.filter(r => r.isDuplicate)
-    const failures = results.filter(r => !r.success && !r.isDuplicate)
-    const totalTransactions = succeeded.reduce((sum, r) => sum + (r.transactionCount ?? 0), 0)
-
-    const parts: string[] = []
-    if (succeeded.length > 0) {
-      parts.push(`${succeeded.length} processed (${totalTransactions} transactions)`)
-    }
-    if (duplicates.length > 0) {
-      parts.push(`${duplicates.length} duplicate${duplicates.length > 1 ? 's' : ''}`)
-    }
-    if (failures.length > 0) {
-      parts.push(`${failures.length} failed`)
-    }
-
-    if (failures.length > 0 && succeeded.length === 0) {
-      toast.error('Processing failed', {
-        id: batchToastId,
-        description: parts.join(' \u00b7 '),
-      })
-    } else if (failures.length > 0 || duplicates.length > 0) {
-      toast.warning('Processing complete with issues', {
-        id: batchToastId,
-        description: parts.join(' \u00b7 '),
-      })
+    if (successful.length === 1) {
+      await processSingleFile(successful[0])
     } else {
-      toast.success('All statements processed!', {
-        id: batchToastId,
-        description: parts.join(' \u00b7 '),
-      })
+      await processBulkFiles(successful)
     }
 
     setProcessing(false)
@@ -149,4 +57,100 @@ export function StatementUploader() {
       />
     </div>
   )
+}
+
+async function processSingleFile(file: UploadedFile) {
+  const body = file.response?.body
+  if (!body) {
+    toast.error(`No upload response for ${file.name}`)
+    return
+  }
+
+  const toastId = toast.loading('Processing statement...', {
+    description: file.name,
+  })
+
+  try {
+    const res = await fetch('/api/process-statement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath: body.filePath,
+        fileName: body.fileName,
+        fileSize: body.size,
+      }),
+    })
+
+    const result = await res.json()
+
+    if (res.status === 409 && result.isDuplicate) {
+      toast.warning('Duplicate statement', {
+        id: toastId,
+        description: file.name,
+      })
+    } else if (!res.ok) {
+      toast.error('Processing failed', {
+        id: toastId,
+        description: result.error || file.name,
+      })
+    } else {
+      const txCount = result.data?.transactionCount ?? 0
+      toast.success('Statement processed!', {
+        id: toastId,
+        description: `${txCount} transactions extracted from ${file.name}`,
+      })
+    }
+  } catch (error) {
+    toast.error('Processing failed', {
+      id: toastId,
+      description: error instanceof Error ? error.message : file.name,
+    })
+  }
+}
+
+async function processBulkFiles(files: UploadedFile[]) {
+  const validFiles = files.filter(f => f.response?.body)
+
+  if (validFiles.length === 0) {
+    toast.error('No valid files to process')
+    return
+  }
+
+  const toastId = toast.loading(
+    `Starting batch processing for ${validFiles.length} statements...`,
+  )
+
+  try {
+    const res = await fetch('/api/statements/process-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        files: validFiles.map(f => ({
+          filePath: f.response!.body.filePath,
+          fileName: f.response!.body.fileName,
+          fileSize: f.response!.body.size,
+        })),
+      }),
+    })
+
+    const result = await res.json()
+
+    if (!res.ok) {
+      toast.error('Failed to start batch processing', {
+        id: toastId,
+        description: result.error || 'Unknown error',
+      })
+      return
+    }
+
+    toast.success(`Processing ${result.totalItems} statements`, {
+      id: toastId,
+      description: 'Track progress via the floating indicator or the Jobs page',
+    })
+  } catch (error) {
+    toast.error('Failed to start batch processing', {
+      id: toastId,
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 }
