@@ -896,5 +896,48 @@ export function createChatTools(userId: string) {
         }
       },
     }),
+
+    render_chart: tool({
+      description:
+        'Render an interactive chart inline in the chat. Use this AFTER gathering data with other tools (search_transactions, get_category_breakdown, get_cashflow, recall_memory, etc.). ' +
+        'The chart will be displayed visually to the user with clickable data points. ' +
+        'Chart types: line (trends over time), bar (comparisons), pie (proportions), area (cumulative trends), stacked_bar (multi-series comparisons). ' +
+        'Each data point can have a `link` (URL to a filtered app page) and a `source` (where the data came from). ' +
+        'ALWAYS include source information so the user can verify every number. ' +
+        'For category breakdowns, link to /expenses?category=CategoryName. For date-based data, link to /transactions?startDate=X&endDate=Y.',
+      inputSchema: z.object({
+        title: z.string().describe('Chart title shown above the chart'),
+        chartType: z.enum(['line', 'bar', 'pie', 'area', 'stacked_bar']).describe('Type of chart to render'),
+        data: z.array(z.object({
+          label: z.string().describe('X-axis label or pie slice label (e.g. "Jan 2025", "Dining", "Rent")'),
+          value: z.number().describe('Primary numeric value for this data point'),
+          secondaryValue: z.number().optional().describe('Optional secondary value for stacked/combo charts'),
+          link: z.string().optional().describe('URL to navigate to when this data point is clicked (e.g. "/expenses?category=Dining")'),
+          source: z.string().optional().describe('Where this data came from: "transactions", "memory:key_name", or "assumption:description"'),
+        })).describe('Array of data points to chart'),
+        xAxisLabel: z.string().optional().describe('Label for X axis'),
+        yAxisLabel: z.string().optional().describe('Label for Y axis'),
+        valuePrefix: z.string().optional().default('$').describe('Prefix for values (default "$")'),
+        valueSuffix: z.string().optional().default('').describe('Suffix for values (e.g. "%")'),
+        secondaryLabel: z.string().optional().describe('Label for secondary data series (for stacked_bar)'),
+        primaryLabel: z.string().optional().describe('Label for primary data series (for stacked_bar)'),
+      }),
+      execute: async (input) => {
+        // Pass-through: the chart spec is rendered by the frontend ChatChart component
+        return {
+          chart: {
+            title: input.title,
+            chartType: input.chartType,
+            data: input.data,
+            xAxisLabel: input.xAxisLabel,
+            yAxisLabel: input.yAxisLabel,
+            valuePrefix: input.valuePrefix ?? '$',
+            valueSuffix: input.valueSuffix ?? '',
+            secondaryLabel: input.secondaryLabel,
+            primaryLabel: input.primaryLabel,
+          },
+        }
+      },
+    }),
   }
 }
