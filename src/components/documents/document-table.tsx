@@ -19,6 +19,12 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   type DocumentItem,
   type DocumentStatus,
   getCategoryColor,
@@ -70,7 +76,6 @@ function DocumentRow({
   onToggleSelect: () => void
 }) {
   const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [processingAsStatement, setProcessingAsStatement] = useState(false)
 
@@ -104,7 +109,6 @@ function DocumentRow({
   }
 
   async function handleProcessAsStatement() {
-    setMenuOpen(false)
     setProcessingAsStatement(true)
 
     const toastId = toast.loading('Processing statement...', {
@@ -169,7 +173,6 @@ function DocumentRow({
       toast.error('Failed to delete document')
     } finally {
       setDeleting(false)
-      setMenuOpen(false)
     }
   }
 
@@ -215,83 +218,60 @@ function DocumentRow({
         {document.accountName || '\u2014'}
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-right">
-        <div className="relative inline-block">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setMenuOpen(prev => !prev)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-
-          {menuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="absolute right-0 z-50 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-                <button
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    handleView()
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                  View
-                </button>
-                {document.source === 'document' &&
-                  document.mimeType === 'application/pdf' &&
-                  document.documentType === 'statement' && (
-                  <button
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-violet-700 hover:bg-violet-50 disabled:opacity-50"
-                    onClick={handleProcessAsStatement}
-                    disabled={processingAsStatement}
-                  >
-                    {processingAsStatement
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <Zap className="h-4 w-4" />
-                    }
-                    {processingAsStatement ? 'Processing...' : 'Process as Statement'}
-                  </button>
-                )}
-                {document.source === 'statement' && document.statementId && (
-                  <button
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      // Reprocess is handled from the statement detail page
-                      window.location.href = `/statements/${document.statementId}`
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Reprocess
-                  </button>
-                )}
-                <button
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    handleDownload()
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={handleView}>
+              <Eye className="h-4 w-4" />
+              View
+            </DropdownMenuItem>
+            {document.source === 'document' &&
+              document.mimeType === 'application/pdf' &&
+              document.documentType === 'statement' && (
+              <DropdownMenuItem
+                onClick={handleProcessAsStatement}
+                disabled={processingAsStatement}
+                className="text-violet-700 focus:text-violet-700 focus:bg-violet-50"
+              >
+                {processingAsStatement
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Zap className="h-4 w-4" />
+                }
+                {processingAsStatement ? 'Processing...' : 'Process as Statement'}
+              </DropdownMenuItem>
+            )}
+            {document.source === 'statement' && document.statementId && (
+              <DropdownMenuItem
+                onClick={() => {
+                  window.location.href = `/statements/${document.statementId}`
+                }}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reprocess
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+              Download
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </td>
     </tr>
   )
