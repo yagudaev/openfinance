@@ -16,6 +16,7 @@ import { format, parseISO } from 'date-fns'
 import type { CategoricalChartFunc } from 'recharts/types/chart/types'
 
 import { formatCurrency, type DailyNetWorthData } from '@/lib/services/net-worth-types'
+import { useMounted } from '@/hooks/use-mounted'
 
 interface NetWorthChartProps {
   snapshots: DailyNetWorthData[]
@@ -26,6 +27,7 @@ type ChartView = 'netWorth' | 'breakdown'
 
 export function NetWorthChart({ snapshots, onDayClick }: NetWorthChartProps) {
   const [view, setView] = useState<ChartView>('netWorth')
+  const mounted = useMounted()
 
   const chartData = snapshots.map((s) => ({
     date: s.date,
@@ -80,6 +82,11 @@ export function NetWorthChart({ snapshots, onDayClick }: NetWorthChartProps) {
         </button>
       </div>
 
+      {!mounted ? (
+        <div className="flex h-[300px] w-full items-center justify-center">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500" />
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={300}>
         {view === 'netWorth' ? (
           <AreaChart
@@ -195,6 +202,7 @@ export function NetWorthChart({ snapshots, onDayClick }: NetWorthChartProps) {
           </AreaChart>
         )}
       </ResponsiveContainer>
+      )}
       {onDayClick && (
         <p className="text-xs text-gray-400 mt-2 text-center">
           Click any point on the chart to see account breakdown and transactions for that day.

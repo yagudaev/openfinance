@@ -28,6 +28,8 @@ import {
   HelpCircle,
 } from 'lucide-react'
 
+import { useMounted } from '@/hooks/use-mounted'
+
 const CHART_COLORS = [
   '#3b82f6', // blue
   '#8b5cf6', // violet
@@ -235,6 +237,7 @@ function DataSourceTable({ data, prefix, suffix }: {
 
 export function ChatChart({ chart }: ChatChartProps) {
   const router = useRouter()
+  const mounted = useMounted()
   const [showData, setShowData] = useState(false)
   const { title, chartType, data, xAxisLabel, yAxisLabel, valuePrefix, valueSuffix, primaryLabel, secondaryLabel } = chart
 
@@ -247,6 +250,14 @@ export function ChatChart({ chart }: ChatChartProps) {
   }
 
   function renderChart() {
+    if (!mounted) {
+      return (
+        <div className="flex h-[240px] w-full items-center justify-center">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500" />
+        </div>
+      )
+    }
+
     const hasLinks = data.some(d => d.link)
     const cursorStyle = hasLinks ? 'pointer' : 'default'
 
