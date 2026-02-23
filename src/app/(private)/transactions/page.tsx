@@ -2,9 +2,6 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { TransactionFilters } from '@/components/transactions/transaction-filters'
-import { TransactionTable } from '@/components/transactions/transaction-table'
-import { CATEGORIES } from '@/lib/constants/categories'
 import {
   startOfMonth,
   endOfMonth,
@@ -16,6 +13,12 @@ import {
   subYears,
 } from 'date-fns'
 
+import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
+import { PageFilterBar } from '@/components/layout/page-filter-bar'
+import { TransactionFilters } from '@/components/transactions/transaction-filters'
+import { TransactionTable } from '@/components/transactions/transaction-table'
+import { CATEGORIES } from '@/lib/constants/categories'
+
 interface TransactionsPageProps {
   searchParams: Promise<{
     search?: string
@@ -23,7 +26,7 @@ interface TransactionsPageProps {
     type?: string
     sort?: string
     order?: string
-    ownershipType?: string
+    ownership?: OwnershipFilterType
     accounts?: string
     dateRange?: string
     dateFrom?: string
@@ -63,7 +66,8 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const type = params.type || ''
   const sortColumn = params.sort || 'transactionDate'
   const sortOrder = params.order === 'asc' ? 'asc' as const : 'desc' as const
-  const ownershipType = params.ownershipType || ''
+  const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
+  const ownershipType = ownershipFilter === 'combined' ? '' : ownershipFilter
   const selectedAccountIds = params.accounts ? params.accounts.split(',').filter(Boolean) : []
   const dateRange = params.dateRange === '__all__' ? '' : (params.dateRange || '')
   const dateFrom = params.dateFrom || ''
@@ -162,6 +166,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             {transactions.length} of {totalCount} transactions
           </p>
         </div>
+        <PageFilterBar ownership={ownershipFilter} />
       </div>
 
       <TransactionFilters
@@ -172,7 +177,6 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         totalDeposits={totalDeposits}
         totalWithdrawals={totalWithdrawals}
         accounts={accounts}
-        ownershipType={ownershipType}
         selectedAccountIds={selectedAccountIds}
         dateRange={dateRange}
         dateFrom={dateFrom}

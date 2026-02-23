@@ -81,59 +81,48 @@ export function ScenariosDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-3" />
-              <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+          </div>
+        ))}
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Scenarios</h1>
-          <p className="mt-1 text-gray-600">
-            AI-driven what-if scenarios for your financial future.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {scenarios.length >= 2 && (
-            <Button
-              variant={compareMode ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => {
-                setCompareMode(!compareMode)
-                if (compareMode) setCompareIds(new Set())
-                setSelectedId(null)
-              }}
-            >
-              <GitCompareArrows className="h-4 w-4 mr-1" />
-              {compareMode ? 'Exit Compare' : 'Compare'}
-            </Button>
-          )}
+      {/* Action buttons */}
+      <div className="flex items-center justify-end gap-2">
+        {scenarios.length >= 2 && (
           <Button
-            variant="ghost"
+            variant={compareMode ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => fetchScenarios()}
+            onClick={() => {
+              setCompareMode(!compareMode)
+              if (compareMode) setCompareIds(new Set())
+              setSelectedId(null)
+            }}
           >
-            <RefreshCw className="h-4 w-4" />
+            <GitCompareArrows className="h-4 w-4 mr-1" />
+            {compareMode ? 'Exit Compare' : 'Compare'}
           </Button>
-          <Button size="sm" asChild>
-            <Link href="/chat">
-              <MessageSquare className="h-4 w-4 mr-1" />
-              New Scenario
-            </Link>
-          </Button>
-        </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => fetchScenarios()}
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+        <Button size="sm" asChild>
+          <Link href="/chat">
+            <MessageSquare className="h-4 w-4 mr-1" />
+            New Scenario
+          </Link>
+        </Button>
       </div>
 
       {scenarios.length === 0 ? (

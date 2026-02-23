@@ -34,7 +34,6 @@ interface TransactionFiltersProps {
   totalDeposits: number
   totalWithdrawals: number
   accounts: AccountInfo[]
-  ownershipType: string
   selectedAccountIds: string[]
   dateRange: string
   dateFrom: string
@@ -59,7 +58,6 @@ export function TransactionFilters({
   totalDeposits,
   totalWithdrawals,
   accounts,
-  ownershipType,
   selectedAccountIds,
   dateRange,
   dateFrom,
@@ -117,7 +115,7 @@ export function TransactionFilters({
     router.push(`/transactions?${params.toString()}`)
   }
 
-  const hasActiveFilters = ownershipType || selectedAccountIds.length > 0 || dateRange || category || type
+  const hasActiveFilters = selectedAccountIds.length > 0 || dateRange || category || type
 
   const accountLabel = selectedAccountIds.length === 0
     ? 'All accounts'
@@ -158,32 +156,6 @@ export function TransactionFilters({
 
       {/* Row 2: Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Account type filter */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-gray-500 mr-1">Type:</span>
-          <Button
-            variant={!ownershipType ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => updateParam('ownershipType', '')}
-          >
-            Both
-          </Button>
-          <Button
-            variant={ownershipType === 'business' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => updateParam('ownershipType', ownershipType === 'business' ? '' : 'business')}
-          >
-            Business
-          </Button>
-          <Button
-            variant={ownershipType === 'personal' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => updateParam('ownershipType', ownershipType === 'personal' ? '' : 'personal')}
-          >
-            Personal
-          </Button>
-        </div>
-
         {/* Account name multi-select */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
