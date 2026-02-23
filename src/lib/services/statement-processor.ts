@@ -6,6 +6,7 @@ import {
 } from 'openai/resources/chat/completions.mjs'
 import { reconcileProvisionalTransactions } from '@/lib/services/plaid-sync'
 import { categorizeTransactions } from '@/lib/services/transaction-categorizer'
+import { recomputeDailyNetWorth } from '@/lib/services/daily-net-worth'
 import { readFile } from 'fs/promises'
 import { getUploadFullPath } from '@/lib/upload-path'
 
@@ -178,6 +179,14 @@ export async function processStatement(
   } catch (error) {
     console.error('Auto-categorization error:', error)
     // Non-fatal: transactions are still saved, just uncategorized
+  }
+
+  // Recompute daily net worth snapshots from transaction history
+  try {
+    await recomputeDailyNetWorth(userId)
+  } catch (error) {
+    console.error('Daily net worth recomputation error:', error)
+    // Non-fatal: statement processing still succeeds
   }
 
   return {

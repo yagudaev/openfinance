@@ -1,23 +1,19 @@
-import { subMonths, subYears, startOfDay, startOfMonth } from 'date-fns'
+import { subMonths, subYears, startOfDay } from 'date-fns'
 
 import { prisma } from '@/lib/prisma'
 
 import type {
   NetWorthAccountData,
-  NetWorthSnapshotData,
   NetWorthSummary,
   AccountBreakdown,
-  HistoryPeriod,
   AccountType,
   AccountCategory,
 } from './net-worth-types'
 
 export type {
   NetWorthAccountData,
-  NetWorthSnapshotData,
   NetWorthSummary,
   AccountBreakdown,
-  HistoryPeriod,
   AccountType,
   AccountCategory,
 } from './net-worth-types'
@@ -81,114 +77,6 @@ export async function computeNetWorth(userId: string): Promise<{
   }
 }
 
-export async function takeSnapshot(userId: string): Promise<NetWorthSnapshotData> {
-  const { totalAssets, totalLiabilities, netWorth } = await computeNetWorth(userId)
-  const today = startOfDay(new Date())
-
-  const accounts = await prisma.netWorthAccount.findMany({
-    where: { userId, isActive: true },
-    select: { id: true, name: true, accountType: true, category: true, currentBalance: true },
-  })
-
-  const snapshot = await prisma.netWorthSnapshot.upsert({
-    where: { userId_date: { userId, date: today } },
-    update: {
-      totalAssets,
-      totalLiabilities,
-      netWorth,
-      accountsJson: JSON.stringify(accounts),
-    },
-    create: {
-      userId,
-      date: today,
-      totalAssets,
-      totalLiabilities,
-      netWorth,
-      accountsJson: JSON.stringify(accounts),
-    },
-  })
-
-  return {
-    id: snapshot.id,
-    date: snapshot.date.toISOString(),
-    totalAssets: snapshot.totalAssets,
-    totalLiabilities: snapshot.totalLiabilities,
-    netWorth: snapshot.netWorth,
-  }
-}
-
-export async function getSnapshots(
-  userId: string,
-  period: HistoryPeriod = 'monthly',
-): Promise<NetWorthSnapshotData[]> {
-  const now = new Date()
-  let since: Date
-
-  switch (period) {
-    case 'monthly':
-      since = subMonths(now, 12)
-      break
-    case 'quarterly':
-      since = subYears(now, 3)
-      break
-    case 'yearly':
-      since = subYears(now, 10)
-      break
-  }
-
-  const snapshots = await prisma.netWorthSnapshot.findMany({
-    where: {
-      userId,
-      date: { gte: since },
-    },
-    orderBy: { date: 'asc' },
-  })
-
-  if (period === 'quarterly') {
-    return filterQuarterly(snapshots)
-  }
-
-  if (period === 'yearly') {
-    return filterYearly(snapshots)
-  }
-
-  return snapshots.map(toSnapshotData)
-}
-
-function filterQuarterly(snapshots: { id: string; date: Date; totalAssets: number; totalLiabilities: number; netWorth: number }[]): NetWorthSnapshotData[] {
-  const byQuarter = new Map<string, typeof snapshots[number]>()
-  for (const s of snapshots) {
-    const q = Math.floor(s.date.getMonth() / 3)
-    const key = `${s.date.getFullYear()}-Q${q}`
-    byQuarter.set(key, s) // keep the latest snapshot per quarter
-  }
-  return Array.from(byQuarter.values()).map(toSnapshotData)
-}
-
-function filterYearly(snapshots: { id: string; date: Date; totalAssets: number; totalLiabilities: number; netWorth: number }[]): NetWorthSnapshotData[] {
-  const byYear = new Map<number, typeof snapshots[number]>()
-  for (const s of snapshots) {
-    byYear.set(s.date.getFullYear(), s) // keep the latest snapshot per year
-  }
-  return Array.from(byYear.values()).map(toSnapshotData)
-}
-
-function toSnapshotData(snapshot: {
-  id: string
-  date: Date
-  totalAssets: number
-  totalLiabilities: number
-  netWorth: number
-}): NetWorthSnapshotData {
-  return {
-    id: snapshot.id,
-    date: snapshot.date.toISOString(),
-    totalAssets: snapshot.totalAssets,
-    totalLiabilities: snapshot.totalLiabilities,
-    netWorth: snapshot.netWorth,
-  }
-}
-
 export async function getAccountBreakdown(userId: string): Promise<AccountBreakdown> {
   const accounts = await prisma.netWorthAccount.findMany({
     where: { userId, isActive: true },
@@ -218,15 +106,16 @@ export async function getSummary(userId: string): Promise<NetWorthSummary> {
   const { totalAssets, totalLiabilities, netWorth } = await computeNetWorth(userId)
 
   const now = new Date()
-  const oneMonthAgo = startOfMonth(subMonths(now, 1))
-  const oneYearAgo = startOfMonth(subYears(now, 1))
+  const oneMonthAgo = startOfDay(subMonths(now, 1))
+  const oneYearAgo = startOfDay(subYears(now, 1))
 
-  const [monthAgoSnapshot, yearAgoSnapshot] = await Promise.all([
-    prisma.netWorthSnapshot.findFirst({
+  // Use DailyNetWorth for historical comparisons (auto-computed from transactions)
+  const [monthAgoRow, yearAgoRow] = await Promise.all([
+    prisma.dailyNetWorth.findFirst({
       where: { userId, date: { lte: oneMonthAgo } },
       orderBy: { date: 'desc' },
     }),
-    prisma.netWorthSnapshot.findFirst({
+    prisma.dailyNetWorth.findFirst({
       where: { userId, date: { lte: oneYearAgo } },
       orderBy: { date: 'desc' },
     }),
@@ -237,19 +126,19 @@ export async function getSummary(userId: string): Promise<NetWorthSummary> {
   let yearOverYearChange: number | null = null
   let yearOverYearPercent: number | null = null
 
-  if (monthAgoSnapshot) {
-    monthOverMonthChange = netWorth - monthAgoSnapshot.netWorth
-    if (monthAgoSnapshot.netWorth !== 0) {
+  if (monthAgoRow) {
+    monthOverMonthChange = netWorth - monthAgoRow.netWorth
+    if (monthAgoRow.netWorth !== 0) {
       monthOverMonthPercent =
-        (monthOverMonthChange / Math.abs(monthAgoSnapshot.netWorth)) * 100
+        (monthOverMonthChange / Math.abs(monthAgoRow.netWorth)) * 100
     }
   }
 
-  if (yearAgoSnapshot) {
-    yearOverYearChange = netWorth - yearAgoSnapshot.netWorth
-    if (yearAgoSnapshot.netWorth !== 0) {
+  if (yearAgoRow) {
+    yearOverYearChange = netWorth - yearAgoRow.netWorth
+    if (yearAgoRow.netWorth !== 0) {
       yearOverYearPercent =
-        (yearOverYearChange / Math.abs(yearAgoSnapshot.netWorth)) * 100
+        (yearOverYearChange / Math.abs(yearAgoRow.netWorth)) * 100
     }
   }
 

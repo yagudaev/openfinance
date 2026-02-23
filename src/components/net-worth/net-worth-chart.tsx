@@ -13,20 +13,23 @@ import {
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 
-import { formatCurrency, type NetWorthSnapshotData } from '@/lib/services/net-worth-types'
+import type { CategoricalChartFunc } from 'recharts/types/chart/types'
+
+import { formatCurrency, type DailyNetWorthData } from '@/lib/services/net-worth-types'
 
 interface NetWorthChartProps {
-  snapshots: NetWorthSnapshotData[]
+  snapshots: DailyNetWorthData[]
+  onDayClick?: (date: string) => void
 }
 
 type ChartView = 'netWorth' | 'breakdown'
 
-export function NetWorthChart({ snapshots }: NetWorthChartProps) {
+export function NetWorthChart({ snapshots, onDayClick }: NetWorthChartProps) {
   const [view, setView] = useState<ChartView>('netWorth')
 
   const chartData = snapshots.map((s) => ({
     date: s.date,
-    dateLabel: format(parseISO(s.date), 'MMM yyyy'),
+    dateLabel: format(parseISO(s.date), 'MMM d, yyyy'),
     netWorth: s.netWorth,
     assets: s.totalAssets,
     liabilities: s.totalLiabilities,
@@ -35,9 +38,19 @@ export function NetWorthChart({ snapshots }: NetWorthChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500">
-        <p>No snapshots yet. Take your first snapshot to start tracking net worth over time.</p>
+        <p>Upload and process bank statements to see your net worth over time.</p>
       </div>
     )
+  }
+
+  const handleChartClick: CategoricalChartFunc = (nextState) => {
+    const idx = nextState.activeTooltipIndex
+    if (typeof idx === 'number' && onDayClick) {
+      const item = chartData[idx]
+      if (item?.date) {
+        onDayClick(item.date)
+      }
+    }
   }
 
   return (
@@ -69,7 +82,12 @@ export function NetWorthChart({ snapshots }: NetWorthChartProps) {
 
       <ResponsiveContainer width="100%" height={300}>
         {view === 'netWorth' ? (
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 10, bottom: 0, left: 10 }}
+            onClick={handleChartClick}
+            style={{ cursor: onDayClick ? 'pointer' : undefined }}
+          >
             <defs>
               <linearGradient id="netWorthGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -112,7 +130,12 @@ export function NetWorthChart({ snapshots }: NetWorthChartProps) {
             />
           </AreaChart>
         ) : (
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 10, bottom: 0, left: 10 }}
+            onClick={handleChartClick}
+            style={{ cursor: onDayClick ? 'pointer' : undefined }}
+          >
             <defs>
               <linearGradient id="assetsGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -172,6 +195,11 @@ export function NetWorthChart({ snapshots }: NetWorthChartProps) {
           </AreaChart>
         )}
       </ResponsiveContainer>
+      {onDayClick && (
+        <p className="text-xs text-gray-400 mt-2 text-center">
+          Click any point on the chart to see account breakdown and transactions for that day.
+        </p>
+      )}
     </div>
   )
 }
