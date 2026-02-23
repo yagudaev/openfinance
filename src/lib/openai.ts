@@ -10,7 +10,7 @@ export interface BankStatementData {
   bankName: string
   accountName?: string
   accountNumber: string
-  accountType?: StatementAccountType
+  accountType: StatementAccountType
   statementDate?: string
   periodStart: string
   periodEnd: string
