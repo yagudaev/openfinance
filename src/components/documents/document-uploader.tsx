@@ -2,13 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, FileUp } from 'lucide-react'
+import { Upload, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, FileUp, HardDrive } from 'lucide-react'
 import { toast } from 'sonner'
 import Uppy, { type Meta, type Body, type UppyFile } from '@uppy/core'
 import DashboardModal from '@uppy/react/dashboard-modal'
 import XHRUpload from '@uppy/xhr-upload'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { showJobProgressToast } from '@/lib/jobs/job-toast'
 
 import '@uppy/core/css/style.min.css'
@@ -251,8 +257,12 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
     uppy.upload()
   }, [uppy])
 
-  function handleUploadButtonClick() {
+  function handleImportFromFile() {
     setModalOpen(true)
+  }
+
+  function handleImportFromGoogleDrive() {
+    toast.info('Google Drive import coming soon')
   }
 
   // ---- Computed state ----
@@ -282,7 +292,7 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
         </div>
       )}
 
-      {/* Page header with upload button */}
+      {/* Page header with import dropdown */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
@@ -290,10 +300,25 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
             Upload and manage your financial documents.
           </p>
         </div>
-        <Button onClick={handleUploadButtonClick}>
-          <Upload className="h-4 w-4" />
-          Upload File(s)
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Upload className="h-4 w-4" />
+              Import
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={handleImportFromFile}>
+              <FileUp className="h-4 w-4" />
+              Import from File
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleImportFromGoogleDrive}>
+              <HardDrive className="h-4 w-4" />
+              Import from Google Drive
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Page content (filters + table from server) */}
