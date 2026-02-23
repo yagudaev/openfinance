@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Calendar, ChevronDown } from 'lucide-react'
 import { format, parse, isValid } from 'date-fns'
@@ -33,21 +33,11 @@ export function TimePeriodSelector({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [startDateInput, setStartDateInput] = useState(customFrom ?? '')
-  const [endDateInput, setEndDateInput] = useState(customTo ?? '')
   const [open, setOpen] = useState(false)
 
   const today = new Date()
   const currentYear = today.getFullYear()
   const calendarYears = [currentYear, currentYear - 1, currentYear - 2]
-
-  useEffect(() => {
-    setStartDateInput(customFrom ?? '')
-  }, [customFrom])
-
-  useEffect(() => {
-    setEndDateInput(customTo ?? '')
-  }, [customTo])
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -115,47 +105,17 @@ export function TimePeriodSelector({
     return today >= quarterStart
   }
 
-  const handleStartDateInputChange = useCallback(
-    (val: string) => {
-      setStartDateInput(val)
-      const parsed = parse(val, 'yyyy-MM-dd', new Date())
-      if (isValid(parsed)) {
-        updateParams({ period: 'custom', dateFrom: val, dateTo: endDateInput })
-      }
-    },
-    [updateParams, endDateInput],
-  )
-
-  const handleEndDateInputChange = useCallback(
-    (val: string) => {
-      setEndDateInput(val)
-      const parsed = parse(val, 'yyyy-MM-dd', new Date())
-      if (isValid(parsed)) {
-        updateParams({
-          period: 'custom',
-          dateFrom: startDateInput,
-          dateTo: val,
-        })
-      }
-    },
-    [updateParams, startDateInput],
-  )
-
-  function handleStartDateBlur() {
-    if (
-      startDateInput &&
-      !isValid(parse(startDateInput, 'yyyy-MM-dd', new Date()))
-    ) {
-      setStartDateInput(customFrom ?? '')
+  function handleStartDateChange(val: string) {
+    const parsed = parse(val, 'yyyy-MM-dd', new Date())
+    if (isValid(parsed)) {
+      updateParams({ period: 'custom', dateFrom: val, dateTo: customTo ?? '' })
     }
   }
 
-  function handleEndDateBlur() {
-    if (
-      endDateInput &&
-      !isValid(parse(endDateInput, 'yyyy-MM-dd', new Date()))
-    ) {
-      setEndDateInput(customTo ?? '')
+  function handleEndDateChange(val: string) {
+    const parsed = parse(val, 'yyyy-MM-dd', new Date())
+    if (isValid(parsed)) {
+      updateParams({ period: 'custom', dateFrom: customFrom ?? '', dateTo: val })
     }
   }
 
@@ -259,7 +219,7 @@ export function TimePeriodSelector({
             ))}
           </div>
 
-          {/* Custom date range */}
+          {/* Custom date range — keyed on props so inputs reset when preset changes */}
           <div className="p-3 border-t">
             <div className="px-0 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
               Custom Range
@@ -270,10 +230,10 @@ export function TimePeriodSelector({
                   Start
                 </label>
                 <Input
+                  key={`start-${customFrom}`}
                   type="date"
-                  value={startDateInput}
-                  onChange={(e) => handleStartDateInputChange(e.target.value)}
-                  onBlur={handleStartDateBlur}
+                  defaultValue={customFrom ?? ''}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
                   className="text-sm h-8"
                 />
               </div>
@@ -282,10 +242,10 @@ export function TimePeriodSelector({
                   End
                 </label>
                 <Input
+                  key={`end-${customTo}`}
                   type="date"
-                  value={endDateInput}
-                  onChange={(e) => handleEndDateInputChange(e.target.value)}
-                  onBlur={handleEndDateBlur}
+                  defaultValue={customTo ?? ''}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
                   className="text-sm h-8"
                 />
               </div>

@@ -149,8 +149,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
   return (
     <DocumentUploadZone>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
         <PageFilterBar ownership={ownershipFilter}>
           <TimePeriodSelector
             value={period}
