@@ -8,7 +8,6 @@ import { getPlaidCredentials } from '@/lib/plaid'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
-import { GoogleDriveConnection } from '@/components/settings/google-drive-connection'
 import { ExpenseCategories } from '@/components/settings/expense-categories'
 import { DeleteAccount } from '@/components/settings/delete-account'
 
@@ -29,10 +28,6 @@ export default async function SettingsPage() {
 
   const plaidCredentials = await getPlaidCredentials(session.user.id)
   const plaidConfigured = plaidCredentials !== null
-
-  const googleConfigured = !!(
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-  )
 
   return (
     <div>
@@ -67,8 +62,6 @@ export default async function SettingsPage() {
         <ExpenseCategories />
 
         <ConnectedBanks plaidConfigured={plaidConfigured} />
-
-        <GoogleDriveConnection googleConfigured={googleConfigured} />
 
         <PlaidKeysForm
           plaidClientId={settings.plaidClientId ? decrypt(settings.plaidClientId) : null}

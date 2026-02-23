@@ -5,7 +5,6 @@ import { prisma } from '@/lib/prisma'
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
 import { DocumentUploader } from '@/components/documents/document-uploader'
-import { DriveImportSheet } from '@/components/documents/drive-import-sheet'
 import type { DocumentItem, DocumentStatus } from '@/components/documents/document-types'
 
 interface DocumentsPageProps {
@@ -112,16 +111,11 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Upload and manage your financial documents.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <DriveImportSheet />
-        </div>
+      <div>
+        <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Upload and manage your financial documents.
+        </p>
       </div>
 
       <DocumentUploader />
