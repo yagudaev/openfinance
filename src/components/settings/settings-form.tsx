@@ -50,6 +50,7 @@ interface UserSettings {
   userTimezone: string
   aiContext: string | null
   aiModel: string
+  processingModel: string
 }
 
 interface Account {
@@ -254,14 +255,17 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
         </p>
         <div className="mt-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">AI Model</label>
+            <label className="block text-sm font-medium text-gray-700">Chat Model</label>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Used for the AI financial advisor chat.
+            </p>
             <select
               value={settings.aiModel}
               onChange={e => setSettings(prev => ({ ...prev, aiModel: e.target.value }))}
               className="mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
             >
               <optgroup label="OpenRouter">
-                <option value="openrouter/cerebras/zai-glm-4.7">GLM 4.7 via Cerebras (fastest)</option>
+                <option value="openrouter/z-ai/glm-4.7">GLM 4.7 (fastest)</option>
                 <option value="openrouter/z-ai/glm-5">GLM 5 (flagship, 744B)</option>
                 <option value="openrouter/anthropic/claude-sonnet-4-5">Claude Sonnet 4.5</option>
                 <option value="openrouter/google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
@@ -271,6 +275,20 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
                 <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
                 <option value="openai/gpt-4o">GPT-4o</option>
               </optgroup>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Processing Model</label>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Used for statement extraction and transaction categorization.
+            </p>
+            <select
+              value={settings.processingModel}
+              onChange={e => setSettings(prev => ({ ...prev, processingModel: e.target.value }))}
+              className="mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            >
+              <option value="openai/gpt-4o-mini">GPT-4o Mini (recommended)</option>
+              <option value="openai/gpt-4o">GPT-4o</option>
             </select>
           </div>
           <div>
@@ -289,6 +307,7 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
           <button
             onClick={() => saveSettings('ai', {
               aiModel: settings.aiModel,
+              processingModel: settings.processingModel,
               aiContext: settings.aiContext,
             })}
             disabled={saving === 'ai'}

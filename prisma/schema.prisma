@@ -101,7 +101,8 @@ model UserSettings {
   bankTimezone       String   @default("America/Vancouver")
   userTimezone       String   @default("America/Vancouver")
   aiContext          String?
-  aiModel            String   @default("openrouter/cerebras/zai-glm-4.7")
+  aiModel            String   @default("openrouter/z-ai/glm-4.7")
+  processingModel    String   @default("openai/gpt-4o-mini")
   plaidClientId      String?  // Self-hosted: user's own Plaid client ID
   plaidSecret        String?  // Self-hosted: user's own Plaid secret
   plaidEnvironment   String   @default("sandbox") // sandbox | development | production

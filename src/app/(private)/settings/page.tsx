@@ -47,6 +47,7 @@ export default async function SettingsPage() {
             userTimezone: settings.userTimezone,
             aiContext: settings.aiContext,
             aiModel: settings.aiModel,
+            processingModel: settings.processingModel,
           }}
           accounts={accounts.map(a => ({
             id: a.id,

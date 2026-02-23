@@ -246,7 +246,8 @@ export function createChatTools(userId: string) {
               display: settings.userTimezone,
             },
             ai: {
-              model: settings.aiModel,
+              chatModel: settings.aiModel,
+              processingModel: settings.processingModel,
               personalContext: settings.aiContext || 'Not set',
             },
           }
@@ -258,13 +259,14 @@ export function createChatTools(userId: string) {
     }),
 
     update_settings: tool({
-      description: 'Update user settings. Only pass the fields you want to change. Valid AI models: "openai/gpt-4o-mini", "openai/gpt-4o", "openrouter/cerebras/auto", "openrouter/google/gemini-2.5-flash-preview". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
+      description: 'Update user settings. Only pass the fields you want to change. Valid chat models: "openrouter/z-ai/glm-4.7", "openrouter/z-ai/glm-5", "openrouter/anthropic/claude-sonnet-4-5", "openrouter/google/gemini-2.5-pro-preview", "openrouter/google/gemini-2.5-flash-preview", "openai/gpt-4o-mini", "openai/gpt-4o". Valid processing models: "openai/gpt-4o-mini", "openai/gpt-4o". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
       inputSchema: z.object({
         fiscalYearEndMonth: z.number().min(1).max(12).optional().describe('Fiscal year end month (1=January, 12=December)'),
         fiscalYearEndDay: z.number().min(1).max(31).optional().describe('Fiscal year end day'),
         bankTimezone: z.string().optional().describe('Bank timezone in IANA format (e.g. America/Vancouver)'),
         userTimezone: z.string().optional().describe('Display timezone in IANA format (e.g. America/Toronto)'),
-        aiModel: z.string().optional().describe('AI model identifier (e.g. "openrouter/cerebras/auto", "openai/gpt-4o-mini")'),
+        aiModel: z.string().optional().describe('Chat/agent AI model identifier (e.g. "openrouter/z-ai/glm-4.7", "openai/gpt-4o")'),
+        processingModel: z.string().optional().describe('Processing model for statement extraction (e.g. "openai/gpt-4o-mini", "openai/gpt-4o")'),
         aiContext: z.string().optional().describe('Personal context about the user for better AI responses'),
       }),
       execute: async (params) => {
@@ -275,16 +277,29 @@ export function createChatTools(userId: string) {
           if (params.bankTimezone !== undefined) data.bankTimezone = params.bankTimezone
           if (params.userTimezone !== undefined) data.userTimezone = params.userTimezone
           if (params.aiModel !== undefined) {
-            const validModels = [
+            const validChatModels = [
+              'openrouter/z-ai/glm-4.7',
+              'openrouter/z-ai/glm-5',
+              'openrouter/anthropic/claude-sonnet-4-5',
+              'openrouter/google/gemini-2.5-pro-preview',
+              'openrouter/google/gemini-2.5-flash-preview',
               'openai/gpt-4o-mini',
               'openai/gpt-4o',
-              'openrouter/cerebras/auto',
-              'openrouter/google/gemini-2.5-flash-preview',
             ]
-            if (!validModels.includes(params.aiModel)) {
-              return { error: `Invalid AI model. Must be one of: ${validModels.join(', ')}` }
+            if (!validChatModels.includes(params.aiModel)) {
+              return { error: `Invalid chat model. Must be one of: ${validChatModels.join(', ')}` }
             }
             data.aiModel = params.aiModel
+          }
+          if (params.processingModel !== undefined) {
+            const validProcessingModels = [
+              'openai/gpt-4o-mini',
+              'openai/gpt-4o',
+            ]
+            if (!validProcessingModels.includes(params.processingModel)) {
+              return { error: `Invalid processing model. Must be one of: ${validProcessingModels.join(', ')}` }
+            }
+            data.processingModel = params.processingModel
           }
           if (params.aiContext !== undefined) data.aiContext = params.aiContext
 
@@ -316,7 +331,8 @@ export function createChatTools(userId: string) {
                 display: updated.userTimezone,
               },
               ai: {
-                model: updated.aiModel,
+                chatModel: updated.aiModel,
+                processingModel: updated.processingModel,
                 personalContext: updated.aiContext || 'Not set',
               },
             },

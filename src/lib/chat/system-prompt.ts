@@ -26,7 +26,7 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **get_cashflow**: Get cashflow data for a date range
 - **get_category_breakdown**: Get spending breakdown by category
 - **get_settings**: Read the user's current settings (fiscal year, timezone, AI model, personal context)
-- **update_settings**: Update user settings — fiscal year end (month 1-12, day 1-31), timezones (IANA format), AI model (e.g. "openrouter/cerebras/zai-glm-4.7", "openrouter/z-ai/glm-5", "openrouter/anthropic/claude-sonnet-4-5", "openrouter/google/gemini-2.5-pro-preview", "openrouter/google/gemini-2.5-flash-preview", "openai/gpt-4o-mini", "openai/gpt-4o"), personal context
+- **update_settings**: Update user settings — fiscal year end (month 1-12, day 1-31), timezones (IANA format), AI chat model (e.g. "openrouter/z-ai/glm-4.7", "openrouter/z-ai/glm-5", "openrouter/anthropic/claude-sonnet-4-5", "openrouter/google/gemini-2.5-pro-preview", "openrouter/google/gemini-2.5-flash-preview", "openai/gpt-4o-mini", "openai/gpt-4o"), processing model for statement extraction (e.g. "openai/gpt-4o-mini", "openai/gpt-4o"), personal context
 - **calculate_tax**: Calculate Canadian federal income tax brackets and rates for a given income
 - **calculate_compound_growth**: Project investment growth with compound interest over time
 - **calculate_rrsp**: Get RRSP contribution room and estimated tax refund for an income level
