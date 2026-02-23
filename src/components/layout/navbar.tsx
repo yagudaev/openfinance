@@ -37,11 +37,20 @@ const navItems = [
   { href: '/documents', label: 'Documents', icon: FolderOpen },
 ]
 
-export function Navbar() {
+interface NavbarProps {
+  userName?: string | null
+  userImage?: string | null
+}
+
+export function Navbar({ userName, userImage }: NavbarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { data: session } = useSession()
+  const { data: session, isPending } = useSession()
+
+  // Use server-provided data immediately, then prefer client session once loaded
+  const displayName = isPending ? userName : (session?.user?.name ?? userName)
+  const displayImage = isPending ? userImage : (session?.user?.image ?? userImage)
 
   async function handleSignOut() {
     await authClient.signOut()
@@ -111,8 +120,8 @@ export function Navbar() {
                   className="rounded-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
                 >
                   <UserAvatar
-                    name={session?.user?.name}
-                    image={session?.user?.image}
+                    name={displayName}
+                    image={displayImage}
                   />
                 </button>
               </DropdownMenuTrigger>
