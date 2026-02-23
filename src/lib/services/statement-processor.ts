@@ -143,6 +143,21 @@ export async function processStatement(
     // Non-fatal: statement processing still succeeds
   }
 
+  // Auto-sync NetWorthAccount so net worth page reflects bank statement balances
+  try {
+    if (statement?.bankAccountId) {
+      await syncNetWorthAccount(
+        userId,
+        statement.bankAccountId,
+        extractedData.closingBalance,
+        extractedData.bankName,
+      )
+    }
+  } catch (error) {
+    console.error('Net worth account sync error:', error)
+    // Non-fatal: statement processing still succeeds
+  }
+
   // Auto-categorize extracted transactions so Dashboard/Expenses pages show data
   let categorizedCount = 0
   try {
@@ -577,6 +592,36 @@ function calculateClosingBalance(
 ): number {
   if (!transactions) return openingBalance
   return transactions.reduce((sum, tx) => sum + tx.amount, openingBalance)
+}
+
+async function syncNetWorthAccount(
+  userId: string,
+  bankAccountId: string,
+  closingBalance: number,
+  bankName?: string,
+) {
+  const existing = await prisma.netWorthAccount.findFirst({
+    where: { userId, bankAccountId },
+  })
+
+  if (existing) {
+    await prisma.netWorthAccount.update({
+      where: { id: existing.id },
+      data: { currentBalance: closingBalance },
+    })
+  } else {
+    await prisma.netWorthAccount.create({
+      data: {
+        userId,
+        bankAccountId,
+        name: bankName || 'Bank Account',
+        accountType: 'asset',
+        category: 'cash',
+        currentBalance: closingBalance,
+        isManual: false,
+      },
+    })
+  }
 }
 
 function getSystemPrompt(timezone: string): string {
