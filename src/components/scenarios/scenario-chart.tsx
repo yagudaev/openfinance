@@ -13,6 +13,7 @@ import {
 
 import { formatCurrency } from '@/lib/services/net-worth-types'
 import type { ProjectionPoint } from '@/lib/services/scenario-types'
+import { useMounted } from '@/hooks/use-mounted'
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b']
 
@@ -24,6 +25,8 @@ interface ScenarioChartProps {
 }
 
 export function ScenarioChart({ scenarios }: ScenarioChartProps) {
+  const mounted = useMounted()
+
   if (scenarios.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-gray-500">
@@ -56,6 +59,14 @@ export function ScenarioChart({ scenarios }: ScenarioChartProps) {
     : chartData.length > 60
       ? chartData.filter((_, i) => i % 3 === 0 || i === chartData.length - 1)
       : chartData
+
+  if (!mounted) {
+    return (
+      <div className="flex h-[350px] w-full items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500" />
+      </div>
+    )
+  }
 
   return (
     <ResponsiveContainer width="100%" height={350}>
