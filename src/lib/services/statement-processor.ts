@@ -1,4 +1,4 @@
-import { BankStatementData, openai } from '@/lib/openai'
+import { BankStatementData, StatementAccountType, openai } from '@/lib/openai'
 import { prisma } from '@/lib/prisma'
 import {
   ChatCompletionMessage,
@@ -12,6 +12,14 @@ import { getUploadFullPath } from '@/lib/upload-path'
 
 // pdf-parse v1 has no proper ESM/TS types — use require
 const pdfParse = require('pdf-parse')
+
+const VALID_ACCOUNT_TYPES: StatementAccountType[] = [
+  'chequing',
+  'savings',
+  'credit_card',
+  'line_of_credit',
+  'loan',
+]
 
 const MAX_ITERATIONS = 15
 
@@ -218,7 +226,7 @@ async function extractAndVerify(
     console.info(`Iteration ${i + 1} of ${MAX_ITERATIONS}`)
 
     const { data: extractedData, llmResponse, filteredTransactions } =
-      await extractDataFromText(pdfText, bankTimezone, aiModel, prevMessages)
+      await extractDataFromText(pdfText, bankTimezone, aiModel, prevMessages, fileName)
 
     const existingStatementId =
       reprocessStatementId || (i > 0 ? statement?.id : undefined)
@@ -289,11 +297,122 @@ async function extractAndVerify(
   throw new Error('Failed to extract and verify statement after maximum iterations.')
 }
 
+/**
+ * Infer account type from PDF text and filename using keyword heuristics.
+ * Used as a fallback when the AI doesn't return a valid accountType.
+ */
+function inferAccountTypeFromText(
+  pdfText: string,
+  fileName: string,
+): StatementAccountType {
+  const text = pdfText.toLowerCase()
+  const file = fileName.toLowerCase()
+
+  // Credit card indicators (check first — most common misclassification)
+  const creditCardPatterns = [
+    /credit\s*card/,
+    /mastercard/,
+    /\bvisa\b/,
+    /\bamex\b/,
+    /american\s*express/,
+    /minimum\s*payment/,
+    /payment\s*due\s*date/,
+    /credit\s*limit/,
+    /available\s*credit/,
+    /cash\s*advance/,
+    /annual\s*fee/,
+    /interest\s*rate/,
+    /previous\s*balance/,
+    /new\s*balance/,
+    /statement\s*balance/,
+    /purchase\s*interest/,
+    /interest\s*charge/,
+    /balance\s*owing/,
+    /amount\s*owing/,
+    /total\s*due/,
+  ]
+
+  for (const pattern of creditCardPatterns) {
+    if (pattern.test(text) || pattern.test(file)) {
+      return 'credit_card'
+    }
+  }
+
+  // Line of credit indicators
+  const locPatterns = [
+    /line\s*of\s*credit/,
+    /\bloc\b/,
+    /heloc/,
+  ]
+
+  for (const pattern of locPatterns) {
+    if (pattern.test(text) || pattern.test(file)) {
+      return 'line_of_credit'
+    }
+  }
+
+  // Loan / mortgage indicators
+  const loanPatterns = [
+    /\bmortgage\b/,
+    /\bloan\b/,
+    /amortization/,
+    /principal\s*balance/,
+  ]
+
+  for (const pattern of loanPatterns) {
+    if (pattern.test(text) || pattern.test(file)) {
+      return 'loan'
+    }
+  }
+
+  // Savings indicators
+  const savingsPatterns = [
+    /savings?\s*account/,
+    /\bsavings\b/,
+    /high.interest\s*savings/,
+    /\btfsa\b/,
+    /tax.free\s*savings/,
+  ]
+
+  for (const pattern of savingsPatterns) {
+    if (pattern.test(text) || pattern.test(file)) {
+      return 'savings'
+    }
+  }
+
+  return 'chequing'
+}
+
+/**
+ * Validate and normalize the account type from AI output.
+ * Falls back to heuristic-based inference if the AI returned an
+ * invalid or missing value.
+ */
+function normalizeAccountType(
+  aiAccountType: string | undefined,
+  pdfText: string,
+  fileName: string,
+): StatementAccountType {
+  if (
+    aiAccountType
+    && VALID_ACCOUNT_TYPES.includes(aiAccountType as StatementAccountType)
+  ) {
+    return aiAccountType as StatementAccountType
+  }
+
+  // AI returned invalid or missing accountType — fall back to heuristic
+  console.info(
+    `AI returned invalid accountType "${aiAccountType}", inferring from text`,
+  )
+  return inferAccountTypeFromText(pdfText, fileName)
+}
+
 async function extractDataFromText(
   pdfText: string,
   bankTimezone: string,
   aiModel: string,
   prevMessages: ChatCompletionMessageParam[],
+  fileName: string,
 ): Promise<{
   data: BankStatementData
   llmResponse: ChatCompletionMessage
@@ -359,6 +478,9 @@ ${pdfText}
 
   data.periodStart = formattedPeriodStart
   data.periodEnd = formattedPeriodEnd
+
+  // Validate and normalize accountType — fall back to heuristic if AI got it wrong
+  data.accountType = normalizeAccountType(data.accountType, pdfText, fileName)
 
   const filteredTransactions: { count: number; descriptions: string[] } = {
     count: 0,
@@ -568,6 +690,7 @@ function mapToBankAccountType(accountType?: string): string {
     case 'line_of_credit':
       return 'line_of_credit'
     case 'loan':
+    case 'mortgage':
       return 'loan'
     case 'savings':
       return 'savings'
@@ -580,6 +703,7 @@ function isLiabilityAccount(accountType?: string): boolean {
   return accountType === 'credit_card'
     || accountType === 'line_of_credit'
     || accountType === 'loan'
+    || accountType === 'mortgage'
 }
 
 async function saveTransactions(
@@ -722,6 +846,8 @@ function mapToNetWorthType(statementAccountType?: string): {
       return { netWorthType: 'liability', netWorthCategory: 'loan' }
     case 'loan':
       return { netWorthType: 'liability', netWorthCategory: 'loan' }
+    case 'mortgage':
+      return { netWorthType: 'liability', netWorthCategory: 'mortgage' }
     case 'savings':
       return { netWorthType: 'asset', netWorthCategory: 'savings' }
     case 'chequing':
@@ -738,12 +864,21 @@ function getSystemPrompt(timezone: string): string {
 
     IMPORTANT: The bank operates in the ${timezone} timezone. All dates and times in the statement should be interpreted as being in this timezone.
 
+    CRITICAL — Account type detection (you MUST set accountType correctly):
+    The "accountType" field is REQUIRED. Carefully analyze the statement content and set it to one of these values:
+      - "credit_card": if the statement mentions ANY of these: Mastercard, Visa, Amex, American Express, credit card, credit limit, minimum payment, payment due date, available credit, cash advance, annual fee, interest charge, purchase interest, balance owing, amount owing, total due, previous statement balance, new balance. Credit card statements show amounts OWED (liabilities), not money held.
+      - "line_of_credit": if the statement mentions line of credit, LOC, HELOC, or similar terms
+      - "loan": if the statement mentions loan, mortgage, amortization, principal balance, or similar lending terms
+      - "savings": if the statement mentions savings account, TFSA, tax-free savings, or high-interest savings
+      - "chequing": ONLY for regular chequing/checking accounts with no indicators of the above types
+    Do NOT default to "chequing" if there are ANY credit card, loan, or line of credit indicators present.
+
     Return the data in this exact format:
     {
       "bankName": "string",
       "accountName": "string (full product name, e.g. 'RBC Business Cash Back Mastercard', 'TD Everyday Chequing', 'Scotiabank Value Visa')",
       "accountNumber": "string (full account number as shown on statement)",
-      "accountType": "chequing" | "savings" | "credit_card" | "line_of_credit" | "loan",
+      "accountType": "chequing" | "savings" | "credit_card" | "line_of_credit" | "loan" (REQUIRED — see account type detection rules above),
       "statementDate": "YYYY-MM-DD (optional - if not clearly visible, omit this field)",
       "periodStart": "YYYY-MM-DD",
       "periodEnd": "YYYY-MM-DD",
@@ -776,14 +911,5 @@ function getSystemPrompt(timezone: string): string {
     - Calculate totals if not explicitly stated
     - Ensure the transactions balance correctly: opening balance + sum of all transaction amounts must equal the closing balance
     - Include the full account number as shown on the statement
-
-    Account type detection:
-    - Set accountType based on the statement content:
-      - "credit_card": if the statement mentions Mastercard, Visa, credit card, credit limit, minimum payment, payment due date, or similar credit card terms
-      - "line_of_credit": if the statement mentions line of credit, LOC, or similar terms
-      - "loan": if the statement mentions loan, mortgage, or similar lending terms
-      - "savings": if the statement mentions savings account
-      - "chequing": for regular chequing/checking accounts (default)
-    - Set accountName to the full product name as shown on the statement (e.g. "RBC Business Cash Back Mastercard", "TD Everyday Chequing Account"). Include the bank name and the specific product name.
-    - For credit card statements, the balance represents amount OWED (a liability), not money held`
+    - Set accountName to the full product name as shown on the statement (e.g. "RBC Business Cash Back Mastercard", "TD Everyday Chequing Account"). Include the bank name and the specific product name.`
 }
