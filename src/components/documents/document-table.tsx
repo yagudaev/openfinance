@@ -111,11 +111,16 @@ function DocumentRow({
   async function handleProcessAsStatement() {
     setProcessingAsStatement(true)
 
-    const toastId = toast.loading('Processing statement...', {
+    const toastId = toast.loading('Extracting text from PDF...', {
       description: document.fileName,
     })
 
     try {
+      toast.loading('Processing statement with AI...', {
+        id: toastId,
+        description: document.fileName,
+      })
+
       const res = await fetch('/api/documents/process-as-statement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,6 +128,7 @@ function DocumentRow({
       })
 
       const result = await res.json()
+      const jobId = result.jobId as string | undefined
 
       if (res.status === 409 && result.isDuplicate) {
         toast.warning('Duplicate statement', {
@@ -133,12 +139,20 @@ function DocumentRow({
         toast.error('Processing failed', {
           id: toastId,
           description: result.error || document.fileName,
+          action: jobId ? {
+            label: 'View details',
+            onClick: () => { window.location.href = `/jobs/${jobId}` },
+          } : undefined,
         })
       } else {
         const txCount = result.data?.transactionCount ?? 0
         toast.success('Statement processed!', {
           id: toastId,
           description: `${txCount} transactions extracted from ${document.fileName}`,
+          action: jobId ? {
+            label: 'View details',
+            onClick: () => { window.location.href = `/jobs/${jobId}` },
+          } : undefined,
         })
         router.refresh()
       }

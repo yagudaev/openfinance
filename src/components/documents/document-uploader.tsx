@@ -453,11 +453,16 @@ async function processSingleStatement(
   file: { filePath: string; fileName: string; fileSize: number; statementId: string },
   setTrackedFiles: SetTrackedFiles,
 ) {
-  const toastId = toast.loading('Processing statement...', {
+  const toastId = toast.loading('Extracting text from PDF...', {
     description: file.fileName,
   })
 
   try {
+    toast.loading('Processing statement with AI...', {
+      id: toastId,
+      description: file.fileName,
+    })
+
     const res = await fetch('/api/process-statement', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -470,6 +475,7 @@ async function processSingleStatement(
     })
 
     const result = await res.json()
+    const jobId = result.jobId as string | undefined
 
     if (res.status === 409 && result.isDuplicate) {
       toast.warning('Duplicate statement', {
@@ -481,6 +487,10 @@ async function processSingleStatement(
       toast.error('Processing failed', {
         id: toastId,
         description: result.error || file.fileName,
+        action: jobId ? {
+          label: 'View details',
+          onClick: () => { window.location.href = `/jobs/${jobId}` },
+        } : undefined,
       })
       markFileStatus(setTrackedFiles, file.fileName, 'error', result.error)
     } else {
@@ -488,6 +498,10 @@ async function processSingleStatement(
       toast.success('Statement processed!', {
         id: toastId,
         description: `${txCount} transactions extracted from ${file.fileName}`,
+        action: jobId ? {
+          label: 'View details',
+          onClick: () => { window.location.href = `/jobs/${jobId}` },
+        } : undefined,
       })
       markFileStatus(setTrackedFiles, file.fileName, 'done')
     }

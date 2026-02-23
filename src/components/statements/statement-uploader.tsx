@@ -67,11 +67,16 @@ async function processSingleFile(file: UploadedFile) {
     return
   }
 
-  const toastId = toast.loading('Processing statement...', {
+  const toastId = toast.loading('Extracting text from PDF...', {
     description: file.name,
   })
 
   try {
+    toast.loading('Processing statement with AI...', {
+      id: toastId,
+      description: file.name,
+    })
+
     const res = await fetch('/api/process-statement', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,6 +88,7 @@ async function processSingleFile(file: UploadedFile) {
     })
 
     const result = await res.json()
+    const jobId = result.jobId as string | undefined
 
     if (res.status === 409 && result.isDuplicate) {
       toast.warning('Duplicate statement', {
@@ -93,12 +99,20 @@ async function processSingleFile(file: UploadedFile) {
       toast.error('Processing failed', {
         id: toastId,
         description: result.error || file.name,
+        action: jobId ? {
+          label: 'View details',
+          onClick: () => { window.location.href = `/jobs/${jobId}` },
+        } : undefined,
       })
     } else {
       const txCount = result.data?.transactionCount ?? 0
       toast.success('Statement processed!', {
         id: toastId,
         description: `${txCount} transactions extracted from ${file.name}`,
+        action: jobId ? {
+          label: 'View details',
+          onClick: () => { window.location.href = `/jobs/${jobId}` },
+        } : undefined,
       })
     }
   } catch (error) {
