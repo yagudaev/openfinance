@@ -1,3 +1,5 @@
+import { createHash } from 'crypto'
+
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -68,11 +70,65 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
   }
 
-  const { relPath, fullPath, sanitizedFileName } = await prepareUpload(session.user.id, file.name)
-
   const buffer = Buffer.from(await file.arrayBuffer())
+  const contentHash = createHash('sha256').update(buffer).digest('hex')
+  const isPdf = file.type === 'application/pdf' || extension === 'pdf'
+  const isStatement = documentType === 'statement' && isPdf
+
+  // Content hash dedup: check if this exact file was already uploaded by this user
+  if (isStatement) {
+    const existingStatement = await prisma.bankStatement.findFirst({
+      where: { userId: session.user.id, contentHash },
+    })
+    if (existingStatement) {
+      return NextResponse.json(
+        { error: 'This file has already been uploaded', isDuplicate: true },
+        { status: 409 },
+      )
+    }
+  } else {
+    const existingDocument = await prisma.document.findFirst({
+      where: { userId: session.user.id, contentHash },
+    })
+    if (existingDocument) {
+      return NextResponse.json(
+        { error: 'This file has already been uploaded', isDuplicate: true },
+        { status: 409 },
+      )
+    }
+  }
+
+  const { relPath, fullPath, sanitizedFileName } = await prepareUpload(session.user.id, file.name)
   await writeFile(fullPath, buffer)
 
+  // Statement PDFs only create a BankStatement record (not a Document),
+  // because the Documents page queries both tables and would show duplicates.
+  if (isStatement) {
+    const statement = await prisma.bankStatement.create({
+      data: {
+        userId: session.user.id,
+        fileName: sanitizedFileName,
+        fileUrl: relPath,
+        fileSize: file.size,
+        contentHash,
+        bankName: 'Unknown',
+        status: 'pending',
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      document: {
+        id: statement.id,
+        fileName: sanitizedFileName,
+        fileUrl: relPath,
+        fileSize: file.size,
+      },
+      statementId: statement.id,
+    })
+  }
+
+  // Non-statement files create a Document record only
   const document = await prisma.document.create({
     data: {
       userId: session.user.id,
@@ -81,28 +137,11 @@ export async function POST(request: NextRequest) {
       fileSize: file.size,
       mimeType: file.type || 'application/octet-stream',
       documentType,
+      contentHash,
       description,
       tags,
     },
   })
 
-  // When the file is a statement PDF, also create a BankStatement record
-  // so it can be queued for AI processing by the frontend
-  let statementId: string | null = null
-  const isPdf = file.type === 'application/pdf' || extension === 'pdf'
-  if (documentType === 'statement' && isPdf) {
-    const statement = await prisma.bankStatement.create({
-      data: {
-        userId: session.user.id,
-        fileName: sanitizedFileName,
-        fileUrl: relPath,
-        fileSize: file.size,
-        bankName: 'Unknown',
-        status: 'pending',
-      },
-    })
-    statementId = statement.id
-  }
-
-  return NextResponse.json({ success: true, document, statementId })
+  return NextResponse.json({ success: true, document, statementId: null })
 }

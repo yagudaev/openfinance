@@ -362,6 +362,7 @@ model Document {
   documentType      String   @default("other") // statement | tax | investment | receipt | other
   tags              String?  // Comma-separated tags
   description       String?
+  contentHash       String?  // SHA-256 hash for dedup
   googleDriveFileId String?  // Google Drive file ID for tracking imported files
   uploadedAt        DateTime @default(now())
   createdAt         DateTime @default(now())
@@ -369,6 +370,7 @@ model Document {
 
   @@index([userId])
   @@index([userId, documentType])
+  @@index([contentHash])
   @@index([googleDriveFileId])
 }
 
