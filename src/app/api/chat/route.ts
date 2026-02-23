@@ -60,7 +60,7 @@ const handler = async (request: Request) => {
     where: { userId: session.user.id },
   })
 
-  const modelId = settings?.aiModel ?? 'openrouter/cerebras/zai-glm-4.7'
+  const modelId = settings?.aiModel ?? 'openrouter/z-ai/glm-4.7'
 
   const isNewUser = !settings?.aiContext
   const memories = await loadMemoriesForPrompt(session.user.id)

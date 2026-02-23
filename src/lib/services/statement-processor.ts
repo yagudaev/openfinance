@@ -114,9 +114,9 @@ export async function processStatement(
     where: { userId },
   })
   const bankTimezone = settings?.bankTimezone || 'America/Vancouver'
-  // Statement processing always uses gpt-4o-mini via OpenAI directly.
-  // User's chat model preference may be an OpenRouter model which is incompatible.
-  const aiModel = 'gpt-4o-mini'
+  const processingModelId = settings?.processingModel ?? 'openai/gpt-4o-mini'
+  // Strip the openai/ prefix — statement processor uses the OpenAI SDK directly
+  const aiModel = processingModelId.replace('openai/', '')
 
   const { statement, extractedData, verification } = await extractAndVerify(
     pdfText,

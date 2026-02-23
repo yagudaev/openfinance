@@ -15,6 +15,7 @@ export async function updateSettings(data: {
   userTimezone?: string
   aiContext?: string | null
   aiModel?: string
+  processingModel?: string
 }) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return { success: false, error: 'Unauthorized' }

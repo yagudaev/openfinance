@@ -51,7 +51,14 @@ export async function categorizeTransactions(
         : undefined,
     }))
 
-    const categorizations = await categorizeBatch(toProcess, userId)
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId },
+      select: { processingModel: true },
+    })
+    const processingModelId = settings?.processingModel ?? 'openai/gpt-4o-mini'
+    const modelId = processingModelId.replace('openai/', '')
+
+    const categorizations = await categorizeBatch(toProcess, userId, modelId)
 
     let categorizedCount = 0
     for (const result of categorizations) {
@@ -104,6 +111,7 @@ async function categorizeBatch(
     account_nickname?: string
   }>,
   userId: string,
+  modelId: string = 'gpt-4o-mini',
 ): Promise<CategorizationResult[]> {
   const { descriptions, names } = await buildCategoryPrompt(userId)
   const categoryEnum = names.map(n => `"${n}"`).join(' | ')
@@ -133,7 +141,7 @@ Respond with JSON:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: modelId,
       messages: [
         { role: 'system', content: systemMessage },
         { role: 'user', content: `Categorize these transactions:\n\n${JSON.stringify(transactions, null, 2)}` },
