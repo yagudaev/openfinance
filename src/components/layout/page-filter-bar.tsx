@@ -11,7 +11,7 @@ interface PageFilterBarProps {
 
 export function PageFilterBar({ ownership, children }: PageFilterBarProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <OwnershipFilter value={ownership} />
       {/* Slot for future time period selector and other controls */}
       {children}
