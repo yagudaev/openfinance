@@ -7,6 +7,7 @@ import {
   Home,
   Receipt,
   PieChart,
+  TrendingUp,
   FolderOpen,
   MessageSquare,
   Settings,
@@ -32,6 +33,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/expenses', label: 'Expenses', icon: PieChart },
+  { href: '/scenarios', label: 'Scenarios', icon: TrendingUp },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
 ]
 
