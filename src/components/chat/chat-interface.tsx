@@ -32,6 +32,8 @@ import {
   XCircle,
   Link,
   Check,
+  Square,
+  Clock,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
@@ -416,6 +418,7 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
   const [isUploading, setIsUploading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [queuedMessage, setQueuedMessage] = useState<string | null>(null)
   const threadIdRef = useRef(threadId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounterRef = useRef(0)
@@ -434,7 +437,7 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
   )
   /* eslint-enable react-hooks/refs */
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, stop, status } = useChat({
     transport,
     messages: initialMessages,
   })
@@ -455,9 +458,17 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
     }
   }, [isLoading, messages.length])
 
+  // Auto-send queued message when AI finishes responding
+  useEffect(() => {
+    if (!isLoading && queuedMessage) {
+      sendMessage({ text: queuedMessage })
+      setQueuedMessage(null)
+    }
+  }, [isLoading, queuedMessage, sendMessage])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, queuedMessage])
 
   async function uploadFile(file: File): Promise<{ filePath: string; fileName: string } | null> {
     const formData = new FormData()
@@ -478,7 +489,10 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if ((!input.trim() && !attachedFile) || isLoading || isUploading) return
+    if ((!input.trim() && !attachedFile) || isUploading) return
+
+    // Don't allow submitting if there's already a queued message
+    if (queuedMessage) return
 
     let messageText = input.trim()
 
@@ -498,9 +512,18 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
 
     if (!messageText) return
 
-    sendMessage({ text: messageText })
+    if (isLoading) {
+      // Queue the message to send after current response completes
+      setQueuedMessage(messageText)
+    } else {
+      sendMessage({ text: messageText })
+    }
     setInput('')
     setAttachedFile(null)
+  }
+
+  function handleStop() {
+    stop()
   }
 
   function handleSuggestion(text: string) {
@@ -763,6 +786,23 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                   </div>
                 </div>
               )}
+              {queuedMessage && (
+                <div className="flex justify-end gap-3">
+                  <div className="flex flex-col items-end">
+                    <div className="max-w-[75%] rounded-lg bg-gray-900/60 px-4 py-2.5 text-sm text-white">
+                      <div className="whitespace-pre-wrap">{queuedMessage}</div>
+                    </div>
+                    <div className="mt-1 flex items-center gap-1 text-xs text-gray-400">
+                      <Clock className="h-3 w-3" />
+                      <span>Queued</span>
+                    </div>
+                  </div>
+                  <UserAvatar
+                    name={session?.user?.name}
+                    image={session?.user?.image}
+                  />
+                </div>
+              )}
               <div ref={bottomRef} />
             </div>
           )}
@@ -808,23 +848,48 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ask about your finances..."
-              disabled={isLoading}
+              placeholder={isLoading ? 'Type to queue a follow-up...' : 'Ask about your finances...'}
+              disabled={!!queuedMessage}
               className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-violet-300 focus:ring-1 focus:ring-violet-300 disabled:opacity-50"
             />
-            <button
-              type="submit"
-              disabled={isLoading || isUploading || (!input.trim() && !attachedFile)}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-            >
-              {isLoading || isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Send
-            </button>
+            {isLoading && !input.trim() && !attachedFile ? (
+              <button
+                type="button"
+                onClick={handleStop}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+                Stop
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isUploading || !!queuedMessage || (!input.trim() && !attachedFile)}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {isLoading ? 'Queue' : 'Send'}
+              </button>
+            )}
           </form>
+          {queuedMessage && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+              <Clock className="h-3 w-3" />
+              <span>Message queued — will send when the current response finishes</span>
+              <button
+                type="button"
+                onClick={() => setQueuedMessage(null)}
+                className="ml-auto rounded p-0.5 text-gray-400 transition-colors hover:text-gray-600"
+                title="Cancel queued message"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
