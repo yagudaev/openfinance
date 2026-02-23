@@ -1,7 +1,7 @@
 import { CATEGORIES } from '@/lib/constants/categories'
 import { openai } from '@/lib/openai'
 import { prisma } from '@/lib/prisma'
-import { getActiveCategories } from '@/lib/services/expense-categories'
+import { getActiveCategories, seedDefaultCategories } from '@/lib/services/expense-categories'
 
 interface CategorizationResult {
   transactionId: string
@@ -81,7 +81,14 @@ export async function categorizeTransactions(
 }
 
 async function buildCategoryPrompt(userId: string): Promise<{ descriptions: string; names: string[] }> {
-  // Try user's custom categories first
+  // Ensure default expense categories exist for this user.
+  // seedDefaultCategories is idempotent — it no-ops if categories already exist.
+  // Without this, users who upload statements before visiting the Settings page
+  // would have no ExpenseCategory rows, causing the categorizer to fall back to
+  // the legacy 5-item CATEGORIES constant (expense, owner-pay, income, etc.)
+  // which is too broad for the AI to produce useful results.
+  await seedDefaultCategories(userId)
+
   const userCategories = await getActiveCategories(userId)
 
   if (userCategories.length > 0) {
