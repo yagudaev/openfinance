@@ -2,10 +2,12 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { readFile, stat } from 'fs/promises'
 import { extname } from 'path'
+
+import Exa from 'exa-js'
+
 import { getUploadFullPath } from '@/lib/upload-path'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/generated/prisma/client'
-
 import {
   calculateFederalTax,
   calculateCompoundGrowth,
@@ -841,6 +843,56 @@ export function createChatTools(userId: string) {
         } catch (error) {
           console.error('delete_scenario error:', error)
           return { error: 'Failed to delete scenario', message: String(error) }
+        }
+      },
+    }),
+
+    search_web: tool({
+      description:
+        'Search the web for current financial information using Exa AI search. Use this for questions about current tax rates, TFSA/RRSP limits, CRA rules, interest rates, mortgage rates, GIC rates, stock/ETF info, financial regulations, policy changes, and investment strategies. Only use when the user asks about something that requires up-to-date information — do NOT use for questions answerable from the user\'s own data.',
+      inputSchema: z.object({
+        query: z.string().describe(
+          'Search query. Be specific and include relevant context (e.g. "2025 TFSA contribution limit Canada" instead of just "TFSA limit").',
+        ),
+        numResults: z.number().optional().default(5).describe('Number of results to return (1-10). Default 5.'),
+      }),
+      execute: async ({ query, numResults }) => {
+        const apiKey = process.env.EXA_API_KEY
+        if (!apiKey) {
+          return {
+            error: 'Web search is not configured. Add an EXA_API_KEY environment variable to enable web research. Get a key at https://exa.ai',
+          }
+        }
+
+        try {
+          const exa = new Exa(apiKey)
+          const response = await exa.searchAndContents(query, {
+            text: { maxCharacters: 1500 },
+            numResults: Math.min(Math.max(numResults ?? 5, 1), 10),
+          })
+
+          if (!response.results || response.results.length === 0) {
+            return {
+              query,
+              count: 0,
+              message: 'No results found. Try rephrasing the search query.',
+            }
+          }
+
+          return {
+            query,
+            count: response.results.length,
+            results: response.results.map(r => ({
+              title: r.title ?? 'Untitled',
+              url: r.url,
+              publishedDate: r.publishedDate ?? null,
+              excerpt: r.text?.slice(0, 500) ?? null,
+              fullText: r.text ?? null,
+            })),
+          }
+        } catch (error) {
+          console.error('search_web error:', error)
+          return { error: 'Web search failed', message: String(error) }
         }
       },
     }),

@@ -34,6 +34,9 @@ import {
   Check,
   Square,
   Clock,
+  Globe,
+  ExternalLink,
+  ChevronDown,
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
@@ -57,6 +60,7 @@ const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> 
   delete_memory: { label: 'Forgetting memory', icon: Trash2 },
   read_file: { label: 'Reading file...', icon: FileText },
   process_statements: { label: 'Processing bank statements...', icon: FileText },
+  search_web: { label: 'Searching the web...', icon: Globe },
 }
 
 function getToolDisplay(toolName: string | undefined) {
@@ -221,6 +225,12 @@ function formatToolSummary(toolName: string | undefined, output: unknown): strin
       return 'TFSA info retrieved'
     case 'evaluate_expression':
       return 'Calculation complete'
+    case 'search_web': {
+      const count = data.count as number | undefined
+      const query = data.query as string | undefined
+      if (count === 0) return `No results for "${query}"`
+      return count !== undefined ? `Found ${count} source${count === 1 ? '' : 's'}` : 'Web search complete'
+    }
     default:
       return 'Completed'
   }
@@ -299,9 +309,93 @@ function formatToolResultDetail(toolName: string | undefined, output: unknown): 
         </div>
       )
     }
+    case 'search_web': {
+      const results = data.results as Array<{
+        title: string
+        url: string
+        publishedDate?: string | null
+        excerpt?: string | null
+      }> | undefined
+      if (!results || results.length === 0) return null
+      return <SearchResultsDetail results={results} />
+    }
     default:
       return null
   }
+}
+
+interface SearchResult {
+  title: string
+  url: string
+  publishedDate?: string | null
+  excerpt?: string | null
+}
+
+function SearchResultsDetail({ results }: { results: SearchResult[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const preview = results.slice(0, 2)
+  const rest = results.slice(2)
+
+  return (
+    <div className="space-y-1.5 text-xs">
+      {preview.map((r, i) => (
+        <SearchResultItem key={i} result={r} />
+      ))}
+      {rest.length > 0 && (
+        <>
+          {expanded && rest.map((r, i) => (
+            <SearchResultItem key={i + 2} result={r} />
+          ))}
+          <button
+            type="button"
+            onClick={() => setExpanded(prev => !prev)}
+            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600"
+          >
+            <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            {expanded ? 'Show fewer sources' : `Show ${rest.length} more source${rest.length === 1 ? '' : 's'}`}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SearchResultItem({ result }: { result: SearchResult }) {
+  function getDomain(url: string): string {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '')
+    } catch {
+      return url
+    }
+  }
+
+  return (
+    <a
+      href={result.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-start gap-2 rounded px-1 py-1 transition-colors hover:bg-gray-50"
+    >
+      <Globe className="mt-0.5 h-3 w-3 shrink-0 text-blue-400" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="truncate font-medium text-gray-700 group-hover:text-blue-600">
+            {result.title}
+          </span>
+          <ExternalLink className="h-2.5 w-2.5 shrink-0 text-gray-300 group-hover:text-blue-400" />
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+          <span>{getDomain(result.url)}</span>
+          {result.publishedDate && (
+            <>
+              <span>·</span>
+              <span>{result.publishedDate.split('T')[0]}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </a>
+  )
 }
 
 interface ToolCallDisplayProps {
