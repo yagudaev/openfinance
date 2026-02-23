@@ -9,7 +9,6 @@ import { SettingsForm } from '@/components/settings/settings-form'
 import { ConnectedBanks } from '@/components/settings/connected-banks'
 import { PlaidKeysForm } from '@/components/settings/plaid-keys-form'
 import { ExpenseCategories } from '@/components/settings/expense-categories'
-import { DeleteAccount } from '@/components/settings/delete-account'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -69,8 +68,6 @@ export default async function SettingsPage() {
           plaidSecret={settings.plaidSecret ? decrypt(settings.plaidSecret) : null}
           plaidEnvironment={settings.plaidEnvironment}
         />
-
-        <DeleteAccount />
       </div>
     </div>
   )
