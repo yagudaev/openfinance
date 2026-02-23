@@ -41,6 +41,7 @@ import {
 import { useSession } from '@/lib/auth-client'
 import { UserAvatar } from '@/components/user-avatar'
 import { ThreadSidebar } from '@/components/chat/thread-sidebar'
+import { ChatChart } from '@/components/chat/chat-chart'
 
 const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> = {
   search_transactions: { label: 'Looking up transactions', icon: Search },
@@ -61,6 +62,7 @@ const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> 
   read_file: { label: 'Reading file...', icon: FileText },
   process_statements: { label: 'Processing bank statements...', icon: FileText },
   search_web: { label: 'Searching the web...', icon: Globe },
+  render_chart: { label: 'Rendering chart', icon: PieChart },
 }
 
 function getToolDisplay(toolName: string | undefined) {
@@ -230,6 +232,10 @@ function formatToolSummary(toolName: string | undefined, output: unknown): strin
       const query = data.query as string | undefined
       if (count === 0) return `No results for "${query}"`
       return count !== undefined ? `Found ${count} source${count === 1 ? '' : 's'}` : 'Web search complete'
+    }
+    case 'render_chart': {
+      const chart = data.chart as { title?: string; chartType?: string } | undefined
+      return chart?.title ? `Chart: ${chart.title}` : 'Chart rendered'
     }
     default:
       return 'Completed'
@@ -835,6 +841,31 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                             output?: unknown
                           }
                           const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
+
+                          // Render interactive chart for render_chart tool results
+                          if (toolName === 'render_chart' && toolPart.state === 'output-available' && toolPart.output) {
+                            const output = toolPart.output as { chart?: {
+                              title: string
+                              chartType: 'line' | 'bar' | 'pie' | 'area' | 'stacked_bar'
+                              data: Array<{
+                                label: string
+                                value: number
+                                secondaryValue?: number
+                                link?: string
+                                source?: string
+                              }>
+                              xAxisLabel?: string
+                              yAxisLabel?: string
+                              valuePrefix: string
+                              valueSuffix: string
+                              secondaryLabel?: string
+                              primaryLabel?: string
+                            } }
+                            if (output.chart) {
+                              return <ChatChart key={i} chart={output.chart} />
+                            }
+                          }
+
                           return (
                             <ToolCallDisplay
                               key={i}
