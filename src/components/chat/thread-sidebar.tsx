@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, MessageSquare, X } from 'lucide-react'
+import { Plus, Search, MessageSquare, X, MoreHorizontal, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import {
@@ -10,6 +10,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 
 interface ThreadItem {
   id: string
@@ -46,15 +52,87 @@ function formatRelativeDate(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+async function renameThread(threadId: string, title: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/chat/threads/${threadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+function EditableInput({
+  defaultValue,
+  onSave,
+  onCancel,
+}: {
+  defaultValue: string
+  onSave: (newTitle: string) => void
+  onCancel: () => void
+}) {
+  const [value, setValue] = useState(defaultValue)
+  const inputRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) {
+      node.focus()
+      node.select()
+    }
+  }, [])
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const trimmed = value.trim()
+      if (trimmed && trimmed !== defaultValue) {
+        onSave(trimmed)
+      } else {
+        onCancel()
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onCancel()
+    }
+  }
+
+  function handleBlur() {
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== defaultValue) {
+      onSave(trimmed)
+    } else {
+      onCancel()
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      onClick={e => e.stopPropagation()}
+      className="w-full rounded border border-violet-300 bg-white px-1 py-0.5 text-sm font-medium outline-none ring-1 ring-violet-300"
+    />
+  )
+}
+
 function ThreadList({
   threads,
   currentThreadId,
   onSelectThread,
+  onRenameThread,
 }: {
   threads: ThreadItem[]
   currentThreadId: string
   onSelectThread: (threadId: string) => void
+  onRenameThread: (threadId: string, newTitle: string) => void
 }) {
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
+
   if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
@@ -64,31 +142,96 @@ function ThreadList({
     )
   }
 
+  function handleStartEditing(threadId: string) {
+    setEditingThreadId(threadId)
+  }
+
+  function handleSave(threadId: string, newTitle: string) {
+    onRenameThread(threadId, newTitle)
+    setEditingThreadId(null)
+  }
+
+  function handleCancel() {
+    setEditingThreadId(null)
+  }
+
   return (
     <div className="space-y-0.5">
-      {threads.map(thread => (
-        <button
-          key={thread.id}
-          type="button"
-          onClick={() => onSelectThread(thread.id)}
-          className={cn(
-            'flex w-full flex-col gap-0.5 rounded-md px-3 py-2.5 text-left transition-colors',
-            thread.id === currentThreadId
-              ? 'bg-violet-50 text-violet-900'
-              : 'text-gray-700 hover:bg-gray-50',
-          )}
-        >
-          <span className="line-clamp-1 text-sm font-medium">
-            {thread.title}
-          </span>
-          <span className="text-xs text-gray-400">
-            {formatRelativeDate(thread.updatedAt)}
-            {thread.messageCount > 0 && (
-              <> &middot; {thread.messageCount} message{thread.messageCount !== 1 ? 's' : ''}</>
+      {threads.map(thread => {
+        const isEditing = editingThreadId === thread.id
+
+        return (
+          <div
+            key={thread.id}
+            className={cn(
+              'group relative flex w-full items-start rounded-md px-3 py-2.5 text-left transition-colors',
+              thread.id === currentThreadId
+                ? 'bg-violet-50 text-violet-900'
+                : 'text-gray-700 hover:bg-gray-50',
             )}
-          </span>
-        </button>
-      ))}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                if (!isEditing) onSelectThread(thread.id)
+              }}
+              className="flex min-w-0 flex-1 flex-col gap-0.5"
+            >
+              {isEditing ? (
+                <EditableInput
+                  defaultValue={thread.title}
+                  onSave={newTitle => handleSave(thread.id, newTitle)}
+                  onCancel={handleCancel}
+                />
+              ) : (
+                <span
+                  className="line-clamp-1 text-sm font-medium"
+                  onDoubleClick={e => {
+                    e.stopPropagation()
+                    handleStartEditing(thread.id)
+                  }}
+                >
+                  {thread.title}
+                </span>
+              )}
+              <span className="text-xs text-gray-400">
+                {formatRelativeDate(thread.updatedAt)}
+                {thread.messageCount > 0 && (
+                  <> &middot; {thread.messageCount} message{thread.messageCount !== 1 ? 's' : ''}</>
+                )}
+              </span>
+            </button>
+
+            {!isEditing && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={e => e.stopPropagation()}
+                    className={cn(
+                      'ml-1 shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600',
+                      'opacity-0 group-hover:opacity-100 focus:opacity-100',
+                    )}
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleStartEditing(thread.id)
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Rename
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -147,6 +290,19 @@ export function ThreadSidebar({
     onClose()
   }
 
+  async function handleRenameThread(threadId: string, newTitle: string) {
+    // Optimistic update
+    setThreads(prev =>
+      prev.map(t => (t.id === threadId ? { ...t, title: newTitle } : t)),
+    )
+
+    const success = await renameThread(threadId, newTitle)
+    if (!success) {
+      // Revert on failure by refetching
+      fetchThreads(search)
+    }
+  }
+
   const sidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
@@ -193,6 +349,7 @@ export function ThreadSidebar({
             threads={threads}
             currentThreadId={currentThreadId}
             onSelectThread={handleSelectThread}
+            onRenameThread={handleRenameThread}
           />
         )}
       </div>
