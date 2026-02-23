@@ -1,8 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, Loader2, Building2, Calendar, Globe, Bot } from 'lucide-react'
-import { updateSettings, updateAccount } from '@/app/(private)/settings/actions'
+import { Save, Loader2, Building2, Calendar, Globe, Bot, Trash2 } from 'lucide-react'
+
+import { updateSettings, updateAccount, deleteAccount, getAccountStats } from '@/app/(private)/settings/actions'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 
 const TIMEZONES = [
   { value: 'America/Vancouver', label: 'Pacific (Vancouver)' },
@@ -63,6 +72,10 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
   const [accounts, setAccounts] = useState(initialAccounts)
   const [saving, setSaving] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null)
+  const [deleteStats, setDeleteStats] = useState<{ statementCount: number; transactionCount: number } | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function saveSettings(section: string, data: Partial<UserSettings>) {
     setSaving(section)
@@ -89,6 +102,39 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
       setMessage({ type: 'error', text: result.error || 'Failed to save' })
     }
     setSaving(null)
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  async function handleDeleteClick(account: Account) {
+    setDeleteTarget(account)
+    setDeleteLoading(true)
+    setDeleteStats(null)
+
+    const result = await getAccountStats(account.id)
+    if (result.success) {
+      setDeleteStats({
+        statementCount: result.statementCount,
+        transactionCount: result.transactionCount,
+      })
+    }
+    setDeleteLoading(false)
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return
+
+    setDeleting(true)
+    setMessage(null)
+    const result = await deleteAccount(deleteTarget.id)
+    if (result.success) {
+      setAccounts(prev => prev.filter(a => a.id !== deleteTarget.id))
+      setMessage({ type: 'success', text: 'Bank account deleted' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to delete account' })
+    }
+    setDeleting(false)
+    setDeleteTarget(null)
+    setDeleteStats(null)
     setTimeout(() => setMessage(null), 3000)
   }
 
@@ -274,6 +320,13 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
                     </p>
                     <p className="text-xs text-gray-500">{account.accountNumber}</p>
                   </div>
+                  <button
+                    onClick={() => handleDeleteClick(account)}
+                    className="rounded-lg border border-red-200 p-1.5 text-red-500 hover:bg-red-50"
+                    title="Delete account"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-3">
                   <div>
@@ -334,6 +387,59 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
           </div>
         </div>
       )}
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteTarget(null)
+          setDeleteStats(null)
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete bank account</DialogTitle>
+            <DialogDescription>
+              {deleteLoading ? (
+                'Loading account details...'
+              ) : deleteStats ? (
+                <>
+                  Are you sure you want to delete{' '}
+                  <strong>{deleteTarget?.bankName || 'Unknown Bank'}</strong> ({deleteTarget?.accountNumber})?
+                  This will unlink {deleteStats.statementCount} statement{deleteStats.statementCount !== 1 ? 's' : ''} and{' '}
+                  {deleteStats.transactionCount} transaction{deleteStats.transactionCount !== 1 ? 's' : ''}.
+                </>
+              ) : (
+                'Are you sure you want to delete this account?'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => {
+                setDeleteTarget(null)
+                setDeleteStats(null)
+              }}
+              disabled={deleting}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting || deleteLoading}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Deleting...
+                </span>
+              ) : (
+                'Delete'
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
