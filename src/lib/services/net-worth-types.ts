@@ -65,6 +65,31 @@ export interface NetWorthSnapshotData {
   netWorth: number
 }
 
+export interface DailyNetWorthData {
+  date: string
+  totalAssets: number
+  totalLiabilities: number
+  netWorth: number
+}
+
+export interface DayDrillDownData {
+  date: string
+  accounts: {
+    id: string
+    name: string
+    accountType: string
+    category: string
+    balance: number
+  }[]
+  transactions: {
+    id: string
+    description: string
+    amount: number
+    transactionDate: string
+    accountName: string
+  }[]
+}
+
 export interface NetWorthSummary {
   netWorth: number
   totalAssets: number

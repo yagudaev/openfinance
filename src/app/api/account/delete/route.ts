@@ -44,6 +44,8 @@ export async function DELETE() {
       await tx.chatTrace.deleteMany({ where: { userId } })
       await tx.chatThread.deleteMany({ where: { userId } })
       await tx.scenario.deleteMany({ where: { userId } })
+      await tx.dailyAccountBalance.deleteMany({ where: { userId } })
+      await tx.dailyNetWorth.deleteMany({ where: { userId } })
       await tx.netWorthSnapshot.deleteMany({ where: { userId } })
       await tx.netWorthAccount.deleteMany({ where: { userId } })
       await tx.expenseCategory.deleteMany({ where: { userId } })

@@ -9,14 +9,13 @@ import {
   ArrowDownRight,
   Plus,
   RefreshCw,
-  Camera,
 } from 'lucide-react'
 
 import {
   formatCurrency,
   formatPercent,
   type NetWorthSummary,
-  type NetWorthSnapshotData,
+  type DailyNetWorthData,
   type NetWorthAccountData,
   type HistoryPeriod,
 } from '@/lib/services/net-worth-types'
@@ -24,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { NetWorthChart } from '@/components/net-worth/net-worth-chart'
 import { AccountList } from '@/components/net-worth/account-list'
 import { AddAccountDialog } from '@/components/net-worth/add-account-dialog'
+import { DayDrillDown } from '@/components/net-worth/day-drill-down'
 
 interface NetWorthData {
   summary: NetWorthSummary
@@ -37,11 +37,11 @@ interface NetWorthData {
 
 export function NetWorthDashboard() {
   const [data, setData] = useState<NetWorthData | null>(null)
-  const [snapshots, setSnapshots] = useState<NetWorthSnapshotData[]>([])
+  const [snapshots, setSnapshots] = useState<DailyNetWorthData[]>([])
   const [period, setPeriod] = useState<HistoryPeriod>('monthly')
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [snapshotting, setSnapshotting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,22 +67,12 @@ export function NetWorthDashboard() {
     fetchData()
   }, [fetchData])
 
-  async function handleTakeSnapshot() {
-    setSnapshotting(true)
-    try {
-      const res = await fetch('/api/net-worth/snapshot', { method: 'POST' })
-      if (res.ok) {
-        await fetchData()
-      }
-    } catch {
-      // ignore
-    } finally {
-      setSnapshotting(false)
-    }
-  }
-
   function handleAccountUpdated() {
     fetchData()
+  }
+
+  function handleDayClick(date: string) {
+    setSelectedDate(date)
   }
 
   if (loading) {
@@ -121,8 +111,6 @@ export function NetWorthDashboard() {
     totalLiabilities: 0,
   }
 
-  const hasAccounts = breakdown.assets.length > 0 || breakdown.liabilities.length > 0
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -134,16 +122,6 @@ export function NetWorthDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleTakeSnapshot}
-            disabled={snapshotting || !hasAccounts}
-            title="Take a snapshot of your current net worth"
-          >
-            <Camera className="h-4 w-4 mr-1" />
-            {snapshotting ? 'Saving...' : 'Snapshot'}
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -261,8 +239,16 @@ export function NetWorthDashboard() {
             ))}
           </div>
         </div>
-        <NetWorthChart snapshots={snapshots} />
+        <NetWorthChart snapshots={snapshots} onDayClick={handleDayClick} />
       </div>
+
+      {/* Day drill-down */}
+      {selectedDate && (
+        <DayDrillDown
+          date={selectedDate}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
 
       {/* Account list */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">

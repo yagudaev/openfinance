@@ -39,6 +39,8 @@ model User {
   expenseCategories     ExpenseCategory[]
   netWorthAccounts      NetWorthAccount[]
   netWorthSnapshots     NetWorthSnapshot[]
+  dailyAccountBalances  DailyAccountBalance[]
+  dailyNetWorths        DailyNetWorth[]
   scenarios             Scenario[]
 }
 
@@ -451,6 +453,8 @@ model NetWorthAccount {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  dailyBalances DailyAccountBalance[]
+
   @@index([userId])
   @@index([userId, accountType])
 }
@@ -468,6 +472,35 @@ model NetWorthSnapshot {
 
   @@unique([userId, date])
   @@index([userId])
+  @@index([userId, date])
+}
+
+model DailyAccountBalance {
+  id        String   @id @default(uuid())
+  date      DateTime // Calendar day (midnight UTC)
+  accountId String
+  account   NetWorthAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Float    // End-of-day balance for this account
+  createdAt DateTime @default(now())
+
+  @@unique([date, accountId])
+  @@index([userId, date])
+  @@index([accountId])
+}
+
+model DailyNetWorth {
+  id               String   @id @default(uuid())
+  date             DateTime // Calendar day (midnight UTC)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalAssets      Float
+  totalLiabilities Float
+  netWorth         Float
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, date])
   @@index([userId, date])
 }
 

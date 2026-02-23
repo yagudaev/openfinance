@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { auth } from '@/lib/auth'
-import { takeSnapshot } from '@/lib/services/net-worth'
+import { recomputeDailyNetWorth } from '@/lib/services/daily-net-worth'
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -10,7 +10,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const snapshot = await takeSnapshot(session.user.id)
+  await recomputeDailyNetWorth(session.user.id)
 
-  return NextResponse.json({ snapshot })
+  return NextResponse.json({ success: true })
 }

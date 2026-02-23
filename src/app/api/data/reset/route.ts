@@ -28,6 +28,8 @@ export async function DELETE() {
       await tx.balanceVerification.deleteMany({ where: { statement: { userId } } })
 
       // Delete financial data
+      await tx.dailyAccountBalance.deleteMany({ where: { userId } })
+      await tx.dailyNetWorth.deleteMany({ where: { userId } })
       await tx.netWorthSnapshot.deleteMany({ where: { userId } })
       await tx.netWorthAccount.deleteMany({ where: { userId } })
       await tx.expenseCategory.deleteMany({ where: { userId } })
