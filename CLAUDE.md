@@ -67,7 +67,7 @@ When working through Linear tickets:
 2. Create a git worktree per ticket: `git worktree add ../openfinance-nan-XXX -b michael/nan-XXX-slug`
 3. In the worktree, run `yarn install --immutable && yarn db:generate` before any work
 4. After changes, verify with `npx tsc --noEmit`
-5. Rebase on latest main, commit, push, create PR via `gh pr create`
+5. Rebase on latest main, commit, push, create PR via `gh pr create`. For UI changes, include a screenshot or screen recording in the PR description showing the feature working. Use Playwright or the dev server to capture visuals.
 6. Wait for CI (Lint, Typecheck & Build + E2E Tests must pass; Mintlify failure is external — ignore)
 7. Enqueue PR in merge queue: `gh pr merge N --squash --delete-branch --auto`
 8. Clean up: `git worktree remove ../openfinance-nan-XXX --force`
