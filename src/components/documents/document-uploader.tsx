@@ -53,7 +53,7 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
   const [uppy] = useState(() => {
     const instance = new Uppy<Meta, Body>({
       restrictions: {
-        maxFileSize: 10 * 1024 * 1024,
+        maxFileSize: 50 * 1024 * 1024,
         maxNumberOfFiles: 20,
         allowedFileTypes: ['.pdf', '.md', '.csv', '.txt', '.jpg', '.jpeg', '.png', '.xlsx', '.xls'],
       },
@@ -305,7 +305,7 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
         open={modalOpen}
         onRequestClose={() => setModalOpen(false)}
         proudlyDisplayPoweredByUppy={false}
-        note="PDF, Markdown, CSV, Text, Images, Excel up to 10 MB"
+        note="PDF, Markdown, CSV, Text, Images, Excel up to 50 MB"
         showRemoveButtonAfterComplete
         fileManagerSelectionType="both"
         doneButtonHandler={() => {

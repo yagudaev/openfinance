@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No files provided' }, { status: 400 })
   }
 
-  const maxSize = 10 * 1024 * 1024 // 10MB per file
-  const maxTotalSize = 100 * 1024 * 1024 // 100MB total
+  const maxSize = 50 * 1024 * 1024 // 50MB per file
+  const maxTotalSize = 500 * 1024 * 1024 // 500MB total
   const uploaded: UploadedFile[] = []
   const errors: { fileName: string, error: string }[] = []
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
   if (totalSize > maxTotalSize) {
     return NextResponse.json(
-      { error: 'Total upload size exceeds 100MB limit' },
+      { error: 'Total upload size exceeds 500MB limit' },
       { status: 400 },
     )
   }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       if (file.name.toLowerCase().endsWith('.zip')) {
         // Handle zip file — extract PDFs
         if (file.size > maxTotalSize) {
-          errors.push({ fileName: file.name, error: 'Zip file exceeds 100MB limit' })
+          errors.push({ fileName: file.name, error: 'Zip file exceeds 500MB limit' })
           continue
         }
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
         for (const pdf of pdfs) {
           if (pdf.buffer.length > maxSize) {
-            errors.push({ fileName: pdf.name, error: 'File exceeds 10MB limit' })
+            errors.push({ fileName: pdf.name, error: 'File exceeds 50MB limit' })
             continue
           }
 
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         // Handle individual PDF
         if (file.size > maxSize) {
-          errors.push({ fileName: file.name, error: 'File exceeds 10MB limit' })
+          errors.push({ fileName: file.name, error: 'File exceeds 50MB limit' })
           continue
         }
 

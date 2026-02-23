@@ -50,9 +50,9 @@ export function StatementUploader() {
       <UppyUploader
         endpoint="/api/upload"
         allowedFileTypes={['.pdf']}
-        maxFileSize={10 * 1024 * 1024}
+        maxFileSize={50 * 1024 * 1024}
         maxNumberOfFiles={50}
-        note="PDF bank statements up to 10 MB each"
+        note="PDF bank statements up to 50 MB each"
         onUploadComplete={handleUploadComplete}
         height={300}
       />
