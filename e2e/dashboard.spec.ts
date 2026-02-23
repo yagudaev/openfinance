@@ -12,13 +12,13 @@ test.describe('Dashboard', () => {
     // Navbar should be visible
     await expect(page.getByText('OpenFinance')).toBeVisible()
 
-    // Dashboard should show stat cards
-    await expect(page.getByText(/^Monthly Income/)).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(/^Monthly Expenses/)).toBeVisible()
+    // Dashboard should show stat cards (titles include dynamic period label)
+    await expect(page.getByText(/^Income \(/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/^Expenses \(/)).toBeVisible()
     await expect(page.getByText(/^Avg Monthly Income/)).toBeVisible()
 
     // Cashflow chart should be visible
-    await expect(page.getByText('Cashflow (Last 12 Months)')).toBeVisible()
+    await expect(page.getByText(/^Cashflow \(/)).toBeVisible()
   })
 
   test('navbar navigation links are present', async ({ page }) => {

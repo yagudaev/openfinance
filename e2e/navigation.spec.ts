@@ -15,7 +15,7 @@ test.describe('Navigation', () => {
   test('can navigate to documents page', async ({ page }) => {
     await page.getByRole('link', { name: 'Documents' }).click()
     await expect(page).toHaveURL(/\/documents/)
-    await expect(page.getByRole('heading', { name: 'Documents' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Documents' }).first()).toBeVisible()
   })
 
   test('can navigate to chat page via Home link', async ({ page }) => {

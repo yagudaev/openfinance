@@ -36,8 +36,8 @@ test.describe('Smoke Test: Authenticated Pages', () => {
   test('all main pages are accessible', async ({ page }) => {
     // Dashboard
     await page.goto('/dashboard')
-    await expect(page.getByText(/Monthly Income/).first()).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(/Monthly Expenses/).first()).toBeVisible()
+    await expect(page.getByText(/^Income \(/).first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/^Expenses \(/).first()).toBeVisible()
 
     // Transactions
     await page.goto('/transactions')
@@ -45,7 +45,7 @@ test.describe('Smoke Test: Authenticated Pages', () => {
 
     // Documents
     await page.goto('/documents')
-    await expect(page.getByRole('heading', { name: 'Documents' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Documents' }).first()).toBeVisible()
 
     // Statements
     await page.goto('/statements')
