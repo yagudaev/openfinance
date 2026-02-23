@@ -26,7 +26,8 @@ export async function updateSettings(data: {
     create: { userId: session.user.id, ...data },
   })
 
-  revalidatePath('/settings')
+  // Skip revalidatePath('/settings') — client handles optimistic state update
+  // to avoid scroll position reset
   return { success: true }
 }
 
@@ -51,7 +52,8 @@ export async function updatePlaidSettings(data: {
     create: { userId: session.user.id, ...encryptedData },
   })
 
-  revalidatePath('/settings')
+  // Skip revalidatePath('/settings') — client handles optimistic state update
+  // to avoid scroll position reset
   return { success: true }
 }
 
@@ -72,7 +74,8 @@ export async function updateAccount(
     data,
   })
 
-  revalidatePath('/settings')
+  // Skip revalidatePath('/settings') — client handles optimistic state update
+  // to avoid scroll position reset
   return { success: true }
 }
 
@@ -130,7 +133,8 @@ export async function deleteAccount(accountId: string) {
 
   await recalculateNetWorth(session.user.id)
 
-  revalidatePath('/settings')
+  // Skip revalidatePath('/settings') — client handles optimistic state update
+  // to avoid scroll position reset
   revalidatePath('/net-worth')
   revalidatePath('/dashboard')
   return { success: true }
