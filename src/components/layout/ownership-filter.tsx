@@ -38,7 +38,7 @@ export function OwnershipFilter({ value }: OwnershipFilterProps) {
           key={option.value}
           onClick={() => handleChange(option.value)}
           className={cn(
-            'px-4 py-1.5 text-sm font-medium rounded-md transition-colors',
+            'px-3 py-1.5 text-sm font-medium rounded-md transition-colors sm:px-4',
             value === option.value
               ? 'bg-white text-gray-900 shadow-sm'
               : 'text-gray-600 hover:text-gray-900',

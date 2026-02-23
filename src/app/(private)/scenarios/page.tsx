@@ -12,7 +12,7 @@ export default function ScenariosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">Scenarios</h1>
           <p className="mt-1 text-gray-600">
