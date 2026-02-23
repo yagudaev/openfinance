@@ -73,6 +73,8 @@ When working through Linear tickets:
 8. Clean up: `git worktree remove ../openfinance-nan-XXX --force`
 9. Update Linear ticket to "Done"
 
+**A ticket is NOT done until it is merged to main.** Opening a PR is not done. Passing CI is not done. Only merged = done.
+
 Multiple tickets can run in parallel using separate worktrees. When branches touch the same file, merge the first PR then rebase the second.
 
 ### Merge Rules
