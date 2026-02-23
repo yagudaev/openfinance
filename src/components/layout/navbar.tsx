@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Home,
   Receipt,
@@ -14,28 +14,30 @@ import {
   Menu,
   X,
   ListChecks,
-  Landmark,
-  TrendingUp,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { authClient, useSession } from '@/lib/auth-client'
-import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const navItems = [
   { href: '/chat', label: 'Home', icon: MessageSquare },
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/net-worth', label: 'Net Worth', icon: Landmark },
-  { href: '/scenarios', label: 'Scenarios', icon: TrendingUp },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/expenses', label: 'Expenses', icon: PieChart },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
-  { href: '/jobs', label: 'Jobs', icon: ListChecks },
 ]
 
 export function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: session } = useSession()
 
@@ -98,22 +100,36 @@ export function Navbar() {
               })}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/settings" className="rounded-full transition-opacity hover:opacity-80">
-              <UserAvatar
-                name={session?.user?.name}
-                image={session?.user?.image}
-              />
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Sign out</span>
-            </Button>
+          <div className="flex items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="User menu"
+                  className="rounded-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+                >
+                  <UserAvatar
+                    name={session?.user?.name}
+                    image={session?.user?.image}
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => router.push('/jobs')}>
+                  <ListChecks className="h-4 w-4" />
+                  Jobs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/settings')}>
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -147,6 +163,19 @@ export function Navbar() {
             )
           })}
           <div className="border-t border-gray-200 my-1 pt-1">
+            <Link
+              href="/jobs"
+              onClick={closeMobileMenu}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/jobs')
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+              )}
+            >
+              <ListChecks className="h-4 w-4" />
+              Jobs
+            </Link>
             <Link
               href="/settings"
               onClick={closeMobileMenu}

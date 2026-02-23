@@ -49,8 +49,9 @@ test.describe('Production Deployment', () => {
     await page.goto(`${PROD_URL}/settings`)
     await expect(page).toHaveURL(/\/settings/)
 
-    // Sign out
-    await page.getByRole('button', { name: /sign out/i }).click()
+    // Sign out via profile dropdown
+    await page.getByRole('button', { name: 'User menu' }).click()
+    await page.getByRole('menuitem', { name: /sign out/i }).click()
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 })
   })
 })

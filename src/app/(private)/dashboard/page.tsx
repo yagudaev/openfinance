@@ -11,6 +11,7 @@ import {
 } from '@/lib/services/dashboard'
 import { CashflowChart } from '@/components/dashboard/cashflow-chart'
 import { OwnershipFilter } from '@/components/dashboard/ownership-filter'
+import { NetWorthDashboard } from '@/components/net-worth/net-worth-dashboard'
 
 interface DashboardPageProps {
   searchParams: Promise<{ ownership?: OwnershipFilterType }>
@@ -74,8 +75,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ]
 
   return (
-    <div>
-      <div className="mb-8 flex items-start justify-between">
+    <div className="space-y-8">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">
             Welcome back{session.user.name ? `, ${session.user.name}` : ''}
@@ -88,7 +89,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
 
       {totalTransactions === 0 && (
-        <div className="mb-8 rounded-lg border border-gray-200 bg-white p-10 text-center">
+        <div className="rounded-lg border border-gray-200 bg-white p-10 text-center">
           <h2 className="text-lg font-semibold text-gray-900">No transactions yet</h2>
           <p className="mt-2 text-sm text-gray-500">
             Upload a bank statement to automatically extract and categorize your transactions.
@@ -102,7 +103,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Net Worth section */}
+      <NetWorthDashboard embedded />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon
           const changePercent = stat.changePercent
