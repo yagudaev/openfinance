@@ -72,8 +72,9 @@ test.describe('Auth Flow', () => {
     await expect(page).toHaveURL(/\/chat/, { timeout: 15_000 })
     await expect(page.getByText('OpenFinance').first()).toBeVisible()
 
-    // Sign out
-    await page.getByRole('button', { name: /sign out/i }).click()
+    // Sign out via profile dropdown
+    await page.getByRole('button', { name: 'User menu' }).click()
+    await page.getByRole('menuitem', { name: /sign out/i }).click()
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 })
 
     // Log back in

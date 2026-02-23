@@ -35,7 +35,11 @@ interface NetWorthData {
   }
 }
 
-export function NetWorthDashboard() {
+interface NetWorthDashboardProps {
+  embedded?: boolean
+}
+
+export function NetWorthDashboard({ embedded = false }: NetWorthDashboardProps) {
   const [data, setData] = useState<NetWorthData | null>(null)
   const [snapshots, setSnapshots] = useState<DailyNetWorthData[]>([])
   const [period, setPeriod] = useState<HistoryPeriod>('monthly')
@@ -116,10 +120,16 @@ export function NetWorthDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Net Worth</h1>
-          <p className="mt-1 text-gray-600">
-            Track your assets, liabilities, and net worth over time.
-          </p>
+          {embedded ? (
+            <h2 className="text-lg font-medium text-gray-900">Net Worth</h2>
+          ) : (
+            <>
+              <h1 className="text-3xl font-semibold text-gray-900">Net Worth</h1>
+              <p className="mt-1 text-gray-600">
+                Track your assets, liabilities, and net worth over time.
+              </p>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
