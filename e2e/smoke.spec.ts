@@ -60,7 +60,7 @@ test.describe('Smoke Test: Authenticated Pages', () => {
     await page.goto('/settings')
 
     await expect(page.getByText('Fiscal Year End')).toBeVisible()
-    await expect(page.getByText('AI Model')).toBeVisible()
+    await expect(page.getByText('AI Assistant')).toBeVisible()
 
     await page.getByRole('button', { name: /save/i }).first().click()
     await expect(page.getByText(/saved|updated/i)).toBeVisible({ timeout: 5_000 })
