@@ -31,19 +31,23 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const search = params.search || ''
   const category = params.category || ''
 
-  // Query documents
-  const docWhere: Record<string, unknown> = { userId: session.user.id }
+  // Query documents — always exclude statement-type docs since those are shown
+  // via BankStatement records below (avoids duplicate entries)
+  const skipDocuments = category === 'statement'
+  const docWhere: Record<string, unknown> = {
+    userId: session.user.id,
+    documentType: category || { not: 'statement' },
+  }
   if (search) {
     docWhere.fileName = { contains: search }
   }
-  if (category) {
-    docWhere.documentType = category
-  }
 
-  const documents = await prisma.document.findMany({
-    where: docWhere,
-    orderBy: { uploadedAt: 'desc' },
-  })
+  const documents = skipDocuments
+    ? []
+    : await prisma.document.findMany({
+      where: docWhere,
+      orderBy: { uploadedAt: 'desc' },
+    })
 
   // Query statements (show when no category filter, or when category is 'statement')
   const showStatements = !category || category === 'statement'
