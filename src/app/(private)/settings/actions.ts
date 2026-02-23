@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 import { encrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
+import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
 
 export async function updateSettings(data: {
   fiscalYearEndMonth?: number
@@ -126,6 +127,10 @@ export async function deleteAccount(accountId: string) {
     })
   })
 
+  await recalculateNetWorth(session.user.id)
+
   revalidatePath('/settings')
+  revalidatePath('/net-worth')
+  revalidatePath('/dashboard')
   return { success: true }
 }

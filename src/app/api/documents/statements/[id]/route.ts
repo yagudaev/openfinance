@@ -1,7 +1,9 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+
 import { prisma } from '@/lib/prisma'
+import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
 
 export async function DELETE(
   _request: NextRequest,
@@ -23,6 +25,8 @@ export async function DELETE(
   }
 
   await prisma.bankStatement.delete({ where: { id } })
+
+  await recalculateNetWorth(session.user.id)
 
   return NextResponse.json({ success: true })
 }

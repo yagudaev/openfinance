@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { processStatementById } from '@/lib/services/statement-processor'
+import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
 
 export async function toggleHumanVerified(statementId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -64,7 +65,11 @@ export async function deleteStatement(statementId: string) {
     where: { id: statementId },
   })
 
+  await recalculateNetWorth(session.user.id)
+
   revalidatePath('/statements')
+  revalidatePath('/net-worth')
+  revalidatePath('/dashboard')
 
   return { success: true }
 }

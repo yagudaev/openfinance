@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { decrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { getPlaidClientForUser } from '@/lib/plaid'
+import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
 
 export async function DELETE(
   _request: NextRequest,
@@ -48,6 +49,8 @@ export async function DELETE(
   await prisma.plaidConnection.delete({
     where: { id },
   })
+
+  await recalculateNetWorth(session.user.id)
 
   return NextResponse.json({ success: true })
 }

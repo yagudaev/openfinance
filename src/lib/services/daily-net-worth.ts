@@ -244,6 +244,46 @@ export async function recomputeDailyNetWorth(userId: string): Promise<void> {
 }
 
 /**
+ * Recalculate net worth after deletions (statements, transactions, accounts).
+ *
+ * 1. For each linked (non-manual) NetWorthAccount, find the most recent
+ *    processed statement for its bankAccountId and set currentBalance
+ *    to that statement's closing balance. If no statements remain, set to 0.
+ * 2. Recompute all daily net worth snapshots from remaining transactions.
+ */
+export async function recalculateNetWorth(userId: string): Promise<void> {
+  // Update currentBalance on linked NetWorthAccounts from remaining statements
+  const linkedAccounts = await prisma.netWorthAccount.findMany({
+    where: { userId, isManual: false, bankAccountId: { not: null } },
+  })
+
+  for (const account of linkedAccounts) {
+    const latestStatement = await prisma.bankStatement.findFirst({
+      where: {
+        userId,
+        bankAccountId: account.bankAccountId!,
+        isProcessed: true,
+        closingBalance: { not: null },
+      },
+      orderBy: { periodEnd: 'desc' },
+      select: { closingBalance: true },
+    })
+
+    const newBalance = latestStatement?.closingBalance ?? 0
+
+    if (account.currentBalance !== newBalance) {
+      await prisma.netWorthAccount.update({
+        where: { id: account.id },
+        data: { currentBalance: newBalance },
+      })
+    }
+  }
+
+  // Recompute daily snapshots from remaining transactions
+  await recomputeDailyNetWorth(userId)
+}
+
+/**
  * Get daily net worth data for chart display.
  */
 export async function getDailyNetWorth(
