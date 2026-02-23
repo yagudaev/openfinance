@@ -34,10 +34,6 @@ export async function getDashboard(
   ownershipFilter: OwnershipFilter = 'combined',
   dateFilter?: DateFilter,
 ): Promise<DashboardData> {
-  const now = new Date()
-  const lastMonth = subMonths(now, 1)
-  const prevMonth = subMonths(now, 2)
-
   const ownershipWhere = ownershipFilter === 'combined'
     ? {}
     : {
@@ -49,20 +45,33 @@ export async function getDashboard(
       }
 
   // When a date filter is set, compute income/expenses within that range
-  // and compare against the preceding period of equal length
+  // and compare against the preceding period of equal length.
+  // When no date filter (all-time), query all transactions with no date bounds.
   const hasDateFilter = dateFilter?.from || dateFilter?.to
 
-  const statsFrom = hasDateFilter && dateFilter.from
-    ? dateFilter.from
-    : startOfMonth(lastMonth)
-  const statsTo = hasDateFilter && dateFilter.to
-    ? dateFilter.to
-    : endOfMonth(lastMonth)
+  const dateWhere = hasDateFilter
+    ? {
+        transactionDate: {
+          ...(dateFilter?.from ? { gte: dateFilter.from } : {}),
+          ...(dateFilter?.to ? { lte: dateFilter.to } : {}),
+        },
+      }
+    : {}
 
-  // Previous period: same duration, immediately before
-  const durationMs = statsTo.getTime() - statsFrom.getTime()
-  const prevTo = new Date(statsFrom.getTime() - 1)
-  const prevFrom = new Date(prevTo.getTime() - durationMs)
+  // Previous period comparison: only meaningful when we have a bounded range
+  const hasBothBounds = dateFilter?.from && dateFilter?.to
+  let prevDateWhere: Record<string, unknown> = {}
+  if (hasBothBounds) {
+    const durationMs = dateFilter.to!.getTime() - dateFilter.from!.getTime()
+    const prevTo = new Date(dateFilter.from!.getTime() - 1)
+    const prevFrom = new Date(prevTo.getTime() - durationMs)
+    prevDateWhere = {
+      transactionDate: { gte: prevFrom, lte: prevTo },
+    }
+  } else if (dateFilter?.from) {
+    // Open-ended: no meaningful "previous" period
+    prevDateWhere = { transactionDate: { lt: dateFilter.from } }
+  }
 
   const [monthlyIncomeResult, monthlyExpensesResult, prevIncomeResult, prevExpensesResult] =
     await Promise.all([
@@ -70,7 +79,7 @@ export async function getDashboard(
         where: {
           userId,
           transactionType: 'credit',
-          transactionDate: { gte: statsFrom, lte: statsTo },
+          ...dateWhere,
           ...ownershipWhere,
         },
         _sum: { amount: true },
@@ -79,7 +88,7 @@ export async function getDashboard(
         where: {
           userId,
           transactionType: 'debit',
-          transactionDate: { gte: statsFrom, lte: statsTo },
+          ...dateWhere,
           ...ownershipWhere,
         },
         _sum: { amount: true },
@@ -88,7 +97,7 @@ export async function getDashboard(
         where: {
           userId,
           transactionType: 'credit',
-          transactionDate: { gte: prevFrom, lte: prevTo },
+          ...prevDateWhere,
           ...ownershipWhere,
         },
         _sum: { amount: true },
@@ -97,7 +106,7 @@ export async function getDashboard(
         where: {
           userId,
           transactionType: 'debit',
-          transactionDate: { gte: prevFrom, lte: prevTo },
+          ...prevDateWhere,
           ...ownershipWhere,
         },
         _sum: { amount: true },
@@ -109,13 +118,18 @@ export async function getDashboard(
   const prevMonthIncome = Math.abs(prevIncomeResult._sum.amount ?? 0)
   const prevMonthExpenses = Math.abs(prevExpensesResult._sum.amount ?? 0)
 
+  // No percent-change for all-time since there's no meaningful prior period
   const stats: DashboardStats = {
     monthlyIncome,
     monthlyExpenses,
     prevMonthIncome,
     prevMonthExpenses,
-    changeIncomePercent: calculatePercentChange(monthlyIncome, prevMonthIncome),
-    changeExpensesPercent: calculatePercentChange(monthlyExpenses, prevMonthExpenses),
+    changeIncomePercent: hasDateFilter
+      ? calculatePercentChange(monthlyIncome, prevMonthIncome)
+      : null,
+    changeExpensesPercent: hasDateFilter
+      ? calculatePercentChange(monthlyExpenses, prevMonthExpenses)
+      : null,
   }
 
   const [cashflowData, totalTransactions] = await Promise.all([

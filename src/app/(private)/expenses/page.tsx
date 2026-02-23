@@ -21,7 +21,7 @@ import { getDateRangeBounds, type DateRangePreset } from '@/lib/types/time-perio
 export default function ExpensesPage() {
   const searchParams = useSearchParams()
   const ownershipFilter: OwnershipFilterType = (searchParams.get('ownership') as OwnershipFilterType) || 'combined'
-  const period = (searchParams.get('period') as DateRangePreset) || 'this-month'
+  const period = (searchParams.get('period') as DateRangePreset) || 'all-time'
   const dateFrom = searchParams.get('dateFrom') || ''
   const dateTo = searchParams.get('dateTo') || ''
 
@@ -57,7 +57,7 @@ export default function ExpensesPage() {
             'last-month': 'last-month',
             'this-year': 'ytd',
             'last-3-months': 'last-12-months',
-            'all-time': 'last-12-months',
+            'all-time': 'all-time',
           }
 
           // For presets that aren't directly mapped, compute custom dates
