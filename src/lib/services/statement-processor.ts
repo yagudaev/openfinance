@@ -240,7 +240,7 @@ async function extractAndVerify(
       })
     }
 
-    await saveTransactions(extractedData.transactions, userId, statement.id)
+    await saveTransactions(extractedData.transactions, userId, statement.id, extractedData.accountType)
     const verification = await verifyBalance(extractedData, statement.id)
 
     const hasInvalidDates = filteredTransactions.count > 0
@@ -576,24 +576,46 @@ function mapToBankAccountType(accountType?: string): string {
   }
 }
 
+function isLiabilityAccount(accountType?: string): boolean {
+  return accountType === 'credit_card'
+    || accountType === 'line_of_credit'
+    || accountType === 'loan'
+}
+
 async function saveTransactions(
   transactions: BankStatementData['transactions'],
   userId: string,
   statementId: string,
+  accountType?: string,
 ) {
   if (!transactions || transactions.length === 0) return
 
-  const data = transactions.map((tx, index) => ({
-    userId,
-    statementId,
-    transactionDate: new Date(tx.date),
-    description: tx.description,
-    amount: tx.amount,
-    balance: tx.balance || null,
-    transactionType: tx.type,
-    referenceNumber: tx.referenceNumber || null,
-    sortOrder: index,
-  }))
+  // For liability accounts (credit cards, LOCs, loans), the bank's debit/credit
+  // perspective is inverted from the user's perspective:
+  //   Bank debit  (charge)  = user spent money  → should be negative (expense)
+  //   Bank credit (payment) = user paid debt    → should be positive (income)
+  // The AI extracts amounts using the bank's convention (debits negative, credits
+  // positive), so for liability accounts we flip the sign and swap the type.
+  const flipSign = isLiabilityAccount(accountType)
+
+  const data = transactions.map((tx, index) => {
+    const amount = flipSign ? -tx.amount : tx.amount
+    const transactionType = flipSign
+      ? (tx.type === 'credit' ? 'debit' : 'credit')
+      : tx.type
+
+    return {
+      userId,
+      statementId,
+      transactionDate: new Date(tx.date),
+      description: tx.description,
+      amount,
+      balance: tx.balance || null,
+      transactionType,
+      referenceNumber: tx.referenceNumber || null,
+      sortOrder: index,
+    }
+  })
 
   await prisma.transaction.createMany({ data })
 }
