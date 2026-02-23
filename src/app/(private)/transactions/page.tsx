@@ -102,9 +102,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           accountNumber: t.statement?.accountNumber ?? null,
           source: t.source,
           isProvisional: t.isProvisional,
+          statementId: t.statementId,
         }))}
         sortColumn={sortColumn}
         sortOrder={sortOrder}
+        categories={categories}
       />
     </div>
   )

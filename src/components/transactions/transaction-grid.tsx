@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import {
   AllCommunityModule,
@@ -37,11 +37,13 @@ interface TransactionRow {
 interface TransactionGridProps {
   transactions: TransactionRow[]
   onTransactionUpdated?: (transaction: TransactionRow) => void
+  highlightTransactionId?: string
 }
 
-export function TransactionGrid({ transactions, onTransactionUpdated }: TransactionGridProps) {
+export function TransactionGrid({ transactions, onTransactionUpdated, highlightTransactionId }: TransactionGridProps) {
   const [rowData, setRowData] = useState<TransactionRow[]>(transactions)
   const [saving, setSaving] = useState<string | null>(null)
+  const gridRef = useRef<AgGridReact<TransactionRow>>(null)
 
   const theme = useMemo(() => {
     return themeQuartz.withParams({
@@ -203,6 +205,18 @@ export function TransactionGrid({ transactions, onTransactionUpdated }: Transact
 
   const getRowId = useCallback((params: { data: TransactionRow }) => params.data.id, [])
 
+  // Highlight and scroll to a specific transaction if requested
+  const onGridReady = useCallback(() => {
+    if (!highlightTransactionId || !gridRef.current?.api) return
+
+    const api = gridRef.current.api
+    const rowNode = api.getRowNode(highlightTransactionId)
+    if (rowNode) {
+      api.ensureNodeVisible(rowNode, 'middle')
+      api.flashCells({ rowNodes: [rowNode] })
+    }
+  }, [highlightTransactionId])
+
   return (
     <div className="relative">
       {saving && (
@@ -212,12 +226,14 @@ export function TransactionGrid({ transactions, onTransactionUpdated }: Transact
       )}
       <div style={{ height: 600, width: '100%' }}>
         <AgGridReact<TransactionRow>
+          ref={gridRef}
           theme={theme}
           rowData={rowData}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           getRowId={getRowId}
           onCellValueChanged={onCellValueChanged}
+          onGridReady={onGridReady}
           singleClickEdit={true}
           stopEditingWhenCellsLoseFocus={true}
           animateRows={true}

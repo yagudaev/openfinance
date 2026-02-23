@@ -6,13 +6,15 @@ import { StatementDetail } from '@/components/statements/statement-detail'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ highlight?: string }>
 }
 
-export default async function StatementDetailPage({ params }: Props) {
+export default async function StatementDetailPage({ params, searchParams }: Props) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/auth/login')
 
   const { id } = await params
+  const { highlight } = await searchParams
 
   const statement = await prisma.bankStatement.findFirst({
     where: { id, userId: session.user.id },
@@ -65,5 +67,5 @@ export default async function StatementDetailPage({ params }: Props) {
       : null,
   }
 
-  return <StatementDetail statement={serialized} />
+  return <StatementDetail statement={serialized} highlightTransactionId={highlight} />
 }

@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
 import { NextRequest, NextResponse } from 'next/server'
 
 const VALID_CATEGORIES = [
@@ -92,4 +93,31 @@ export async function PATCH(
       transactionType: updated.transactionType,
     },
   })
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, userId: session.user.id },
+  })
+
+  if (!transaction) {
+    return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+  }
+
+  await prisma.transaction.delete({ where: { id } })
+
+  // Recalculate net worth after deletion
+  await recalculateNetWorth(session.user.id)
+
+  return NextResponse.json({ success: true })
 }

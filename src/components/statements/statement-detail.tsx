@@ -66,9 +66,10 @@ interface StatementData {
 
 interface StatementDetailProps {
   statement: StatementData
+  highlightTransactionId?: string
 }
 
-export function StatementDetail({ statement: initial }: StatementDetailProps) {
+export function StatementDetail({ statement: initial, highlightTransactionId }: StatementDetailProps) {
   const router = useRouter()
   const [statement, setStatement] = useState(initial)
   const [isToggling, setIsToggling] = useState(false)
@@ -440,7 +441,10 @@ export function StatementDetail({ statement: initial }: StatementDetailProps) {
               Click a cell to edit. Changes save automatically.
             </p>
             <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
-              <TransactionGrid transactions={statement.transactions} />
+              <TransactionGrid
+                transactions={statement.transactions}
+                highlightTransactionId={highlightTransactionId}
+              />
             </div>
           </div>
         )}
