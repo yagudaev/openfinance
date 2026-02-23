@@ -19,9 +19,26 @@ const ibmPlexMono = IBM_Plex_Mono({
   variable: '--font-mono',
 })
 
+const description =
+  'Self-hosted bookkeeping app with AI-powered transaction extraction. Track expenses, manage budgets, and own your financial data.'
+
 export const metadata: Metadata = {
   title: 'OpenFinance',
-  description: 'Self-hosted personal finance and bookkeeping with AI',
+  description,
+  metadataBase: new URL('https://openfinance.to'),
+  openGraph: {
+    title: 'OpenFinance',
+    description,
+    url: 'https://openfinance.to',
+    siteName: 'OpenFinance',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'OpenFinance',
+    description,
+  },
 }
 
 export default function RootLayout({
