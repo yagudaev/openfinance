@@ -77,6 +77,7 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
   const [deleteStats, setDeleteStats] = useState<{ statementCount: number; transactionCount: number } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [removingAccountId, setRemovingAccountId] = useState<string | null>(null)
 
   async function saveSettings(section: string, data: Partial<UserSettings>) {
     setSaving(section)
@@ -126,17 +127,29 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
 
     setDeleting(true)
     setMessage(null)
-    const result = await deleteAccount(deleteTarget.id)
+    const targetId = deleteTarget.id
+    const result = await deleteAccount(targetId)
     if (result.success) {
-      setAccounts(prev => prev.filter(a => a.id !== deleteTarget.id))
-      setMessage({ type: 'success', text: 'Bank account deleted' })
+      // Close dialog first, then animate out
+      setDeleting(false)
+      setDeleteTarget(null)
+      setDeleteStats(null)
+      setRemovingAccountId(targetId)
+
+      // Remove from state after the CSS transition completes (300ms)
+      setTimeout(() => {
+        setAccounts(prev => prev.filter(a => a.id !== targetId))
+        setRemovingAccountId(null)
+        setMessage({ type: 'success', text: 'Bank account deleted' })
+        setTimeout(() => setMessage(null), 3000)
+      }, 300)
     } else {
       setMessage({ type: 'error', text: result.error || 'Failed to delete account' })
+      setDeleting(false)
+      setDeleteTarget(null)
+      setDeleteStats(null)
+      setTimeout(() => setMessage(null), 3000)
     }
-    setDeleting(false)
-    setDeleteTarget(null)
-    setDeleteStats(null)
-    setTimeout(() => setMessage(null), 3000)
   }
 
   return (
@@ -329,9 +342,17 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
           <p className="mt-1 text-sm text-gray-500">
             Manage your bank account settings.
           </p>
-          <div className="mt-4 space-y-4">
+          <div>
             {accounts.map(account => (
-              <div key={account.id} className="rounded-lg border border-gray-200 p-4">
+              <div
+                key={account.id}
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  removingAccountId === account.id
+                    ? 'max-h-0 opacity-0 mt-0'
+                    : 'max-h-96 opacity-100 mt-4'
+                }`}
+              >
+              <div className="rounded-lg border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
@@ -401,6 +422,7 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
                     </button>
                   </div>
                 </div>
+              </div>
               </div>
             ))}
           </div>
