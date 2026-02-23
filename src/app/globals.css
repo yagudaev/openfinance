@@ -81,3 +81,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-body);
 }
+
+/*
+ * Tailwind CSS v4 preflight sets [hidden] { display: none !important },
+ * which breaks Uppy Dashboard's hidden file inputs. Uppy relies on
+ * visually-hidden (not display:none) inputs so .click() can trigger
+ * the native file picker. Override with Uppy's own positioning strategy.
+ */
+.uppy-Dashboard-input[hidden] {
+  display: block !important;
+}

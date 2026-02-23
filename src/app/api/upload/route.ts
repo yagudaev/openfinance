@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const maxSize = 10 * 1024 * 1024
+  const maxSize = 50 * 1024 * 1024
   if (file.size > maxSize) {
-    return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
+    return NextResponse.json({ error: 'File size exceeds 50MB limit' }, { status: 400 })
   }
 
   const { relPath, fullPath, sanitizedFileName } = await prepareUpload(session.user.id, file.name)
