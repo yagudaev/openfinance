@@ -152,6 +152,8 @@ export async function processStatement(
         statement.bankAccountId,
         extractedData.closingBalance,
         extractedData.bankName,
+        extractedData.accountType,
+        extractedData.accountName,
       )
     }
   } catch (error) {
@@ -422,6 +424,8 @@ async function saveStatement(
     userId,
     data.accountNumber,
     data.bankName || 'Unknown Bank',
+    data.accountType,
+    data.accountName,
   )
 
   if (existingStatementId) {
@@ -511,8 +515,13 @@ async function getOrCreateBankAccountId(
   userId: string,
   accountNumber: string | undefined,
   bankName: string,
+  accountType?: string,
+  accountName?: string,
 ): Promise<string | null> {
   if (!accountNumber) return null
+
+  const bankAccountType = mapToBankAccountType(accountType)
+  const nickname = accountName || accountNumber
 
   const existing = await prisma.bankAccount.findUnique({
     where: {
@@ -520,19 +529,51 @@ async function getOrCreateBankAccountId(
     },
   })
 
-  if (existing) return existing.id
+  if (existing) {
+    // Update account type and nickname if they were defaults
+    const updates: Record<string, string> = {}
+    if (existing.accountType === 'chequing' && bankAccountType !== 'chequing') {
+      updates.accountType = bankAccountType
+    }
+    if (existing.nickname === existing.accountNumber && accountName) {
+      updates.nickname = nickname
+    }
+    if (Object.keys(updates).length > 0) {
+      await prisma.bankAccount.update({
+        where: { id: existing.id },
+        data: updates,
+      })
+    }
+    return existing.id
+  }
 
   const created = await prisma.bankAccount.create({
     data: {
       userId,
       accountNumber,
-      nickname: accountNumber,
+      nickname,
       bankName,
       currency: 'CAD',
+      accountType: bankAccountType,
     },
   })
 
   return created.id
+}
+
+function mapToBankAccountType(accountType?: string): string {
+  switch (accountType) {
+    case 'credit_card':
+      return 'credit_card'
+    case 'line_of_credit':
+      return 'line_of_credit'
+    case 'loan':
+      return 'loan'
+    case 'savings':
+      return 'savings'
+    default:
+      return 'chequing'
+  }
 }
 
 async function saveTransactions(
@@ -608,28 +649,63 @@ async function syncNetWorthAccount(
   bankAccountId: string,
   closingBalance: number,
   bankName?: string,
+  statementAccountType?: string,
+  accountName?: string,
 ) {
+  const { netWorthType, netWorthCategory } = mapToNetWorthType(statementAccountType)
+  const displayName = accountName || bankName || 'Bank Account'
+
   const existing = await prisma.netWorthAccount.findFirst({
     where: { userId, bankAccountId },
   })
 
   if (existing) {
+    const updates: Record<string, unknown> = { currentBalance: closingBalance }
+    // Update account type if it was defaulted to asset but should be liability
+    if (existing.accountType === 'asset' && netWorthType === 'liability') {
+      updates.accountType = netWorthType
+      updates.category = netWorthCategory
+    }
+    // Update name if it was a generic default
+    if (accountName && (existing.name === bankName || existing.name === 'Bank Account')) {
+      updates.name = displayName
+    }
     await prisma.netWorthAccount.update({
       where: { id: existing.id },
-      data: { currentBalance: closingBalance },
+      data: updates,
     })
   } else {
     await prisma.netWorthAccount.create({
       data: {
         userId,
         bankAccountId,
-        name: bankName || 'Bank Account',
-        accountType: 'asset',
-        category: 'cash',
+        name: displayName,
+        accountType: netWorthType,
+        category: netWorthCategory,
         currentBalance: closingBalance,
         isManual: false,
       },
     })
+  }
+}
+
+function mapToNetWorthType(statementAccountType?: string): {
+  netWorthType: 'asset' | 'liability'
+  netWorthCategory: string
+} {
+  switch (statementAccountType) {
+    case 'credit_card':
+      return { netWorthType: 'liability', netWorthCategory: 'credit-card' }
+    case 'line_of_credit':
+      return { netWorthType: 'liability', netWorthCategory: 'loan' }
+    case 'loan':
+      return { netWorthType: 'liability', netWorthCategory: 'loan' }
+    case 'savings':
+      return { netWorthType: 'asset', netWorthCategory: 'savings' }
+    case 'chequing':
+      return { netWorthType: 'asset', netWorthCategory: 'checking' }
+    default:
+      return { netWorthType: 'asset', netWorthCategory: 'checking' }
   }
 }
 
@@ -643,7 +719,9 @@ function getSystemPrompt(timezone: string): string {
     Return the data in this exact format:
     {
       "bankName": "string",
+      "accountName": "string (full product name, e.g. 'RBC Business Cash Back Mastercard', 'TD Everyday Chequing', 'Scotiabank Value Visa')",
       "accountNumber": "string (full account number as shown on statement)",
+      "accountType": "chequing" | "savings" | "credit_card" | "line_of_credit" | "loan",
       "statementDate": "YYYY-MM-DD (optional - if not clearly visible, omit this field)",
       "periodStart": "YYYY-MM-DD",
       "periodEnd": "YYYY-MM-DD",
@@ -675,5 +753,15 @@ function getSystemPrompt(timezone: string): string {
     - If statementDate is not clearly visible, omit it (periodEnd will be used as fallback)
     - Calculate totals if not explicitly stated
     - Ensure the transactions balance correctly: opening balance + sum of all transaction amounts must equal the closing balance
-    - Include the full account number as shown on the statement`
+    - Include the full account number as shown on the statement
+
+    Account type detection:
+    - Set accountType based on the statement content:
+      - "credit_card": if the statement mentions Mastercard, Visa, credit card, credit limit, minimum payment, payment due date, or similar credit card terms
+      - "line_of_credit": if the statement mentions line of credit, LOC, or similar terms
+      - "loan": if the statement mentions loan, mortgage, or similar lending terms
+      - "savings": if the statement mentions savings account
+      - "chequing": for regular chequing/checking accounts (default)
+    - Set accountName to the full product name as shown on the statement (e.g. "RBC Business Cash Back Mastercard", "TD Everyday Chequing Account"). Include the bank name and the specific product name.
+    - For credit card statements, the balance represents amount OWED (a liability), not money held`
 }

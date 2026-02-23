@@ -4,9 +4,13 @@ export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+export type StatementAccountType = 'chequing' | 'savings' | 'credit_card' | 'line_of_credit' | 'loan'
+
 export interface BankStatementData {
   bankName: string
+  accountName?: string
   accountNumber: string
+  accountType?: StatementAccountType
   statementDate?: string
   periodStart: string
   periodEnd: string
