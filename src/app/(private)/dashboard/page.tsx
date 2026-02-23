@@ -10,7 +10,7 @@ import {
   type OwnershipFilter as OwnershipFilterType,
 } from '@/lib/services/dashboard'
 import { CashflowChart } from '@/components/dashboard/cashflow-chart'
-import { OwnershipFilter } from '@/components/dashboard/ownership-filter'
+import { PageFilterBar } from '@/components/layout/page-filter-bar'
 import { NetWorthDashboard } from '@/components/net-worth/net-worth-dashboard'
 
 interface DashboardPageProps {
@@ -85,7 +85,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             Here&apos;s what&apos;s happening with your finances today
           </p>
         </div>
-        <OwnershipFilter value={ownershipFilter} />
+        <PageFilterBar ownership={ownershipFilter} />
       </div>
 
       {totalTransactions === 0 && (

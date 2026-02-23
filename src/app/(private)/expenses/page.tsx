@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
+import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
+import { PageFilterBar } from '@/components/layout/page-filter-bar'
 import { PeriodSelector } from '@/components/expenses/period-selector'
 import { ExpenseBreadcrumb } from '@/components/expenses/expense-breadcrumb'
 import { ExpenseOverview } from '@/components/expenses/expense-overview'
@@ -16,6 +19,9 @@ import type {
 } from '@/lib/types/expenses'
 
 export default function ExpensesPage() {
+  const searchParams = useSearchParams()
+  const ownershipFilter: OwnershipFilterType = (searchParams.get('ownership') as OwnershipFilterType) || 'combined'
+
   const [period, setPeriod] = useState<PeriodKey>('this-month')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedTransaction, setSelectedTransaction] =
@@ -33,6 +39,9 @@ export default function ExpensesPage() {
       setLoading(true)
       try {
         const params = new URLSearchParams({ period })
+        if (ownershipFilter !== 'combined') {
+          params.set('ownership', ownershipFilter)
+        }
         if (category) {
           params.set('category', category)
         }
@@ -50,7 +59,7 @@ export default function ExpensesPage() {
         setLoading(false)
       }
     },
-    [period],
+    [period, ownershipFilter],
   )
 
   useEffect(() => {
@@ -59,7 +68,7 @@ export default function ExpensesPage() {
     } else {
       fetchData()
     }
-  }, [period, selectedCategory, fetchData])
+  }, [period, selectedCategory, ownershipFilter, fetchData])
 
   function handleCategoryClick(category: string) {
     setSelectedCategory(category)
@@ -114,7 +123,9 @@ export default function ExpensesPage() {
             />
           </div>
         </div>
-        <PeriodSelector value={period} onChange={handlePeriodChange} />
+        <PageFilterBar ownership={ownershipFilter}>
+          <PeriodSelector value={period} onChange={handlePeriodChange} />
+        </PageFilterBar>
       </div>
 
       {loading ? (

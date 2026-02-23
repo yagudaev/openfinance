@@ -2,6 +2,9 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+
+import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
+import { PageFilterBar } from '@/components/layout/page-filter-bar'
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
 import { DocumentUploadZone } from '@/components/documents/document-uploader'
@@ -11,6 +14,7 @@ interface DocumentsPageProps {
   searchParams: Promise<{
     search?: string
     category?: string
+    ownership?: OwnershipFilterType
   }>
 }
 
@@ -30,6 +34,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const params = await searchParams
   const search = params.search || ''
   const category = params.category || ''
+  const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
 
   // Query documents — always exclude statement-type docs since those are shown
   // via BankStatement records below (avoids duplicate entries)
@@ -61,6 +66,9 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         { fileName: { contains: search } },
         { bankName: { contains: search } },
       ]
+    }
+    if (ownershipFilter !== 'combined') {
+      stmtWhere.bankAccount = { ownershipType: ownershipFilter }
     }
 
     const statements = await prisma.bankStatement.findMany({
@@ -115,6 +123,10 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
   return (
     <DocumentUploadZone>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
+        <PageFilterBar ownership={ownershipFilter} />
+      </div>
       <DocumentFilters search={search} category={category} />
       <DocumentTable documents={documentItems} />
     </DocumentUploadZone>

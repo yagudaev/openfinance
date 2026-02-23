@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
   const customStart = searchParams.get('startDate') || undefined
   const customEnd = searchParams.get('endDate') || undefined
   const categoryFilter = searchParams.get('category') || undefined
+  const ownership = searchParams.get('ownership') || undefined
 
   let dateRange
   try {
@@ -104,6 +105,11 @@ export async function GET(request: NextRequest) {
   const { start, end, prevStart, prevEnd } = dateRange
   const userId = session.user.id
 
+  // Build ownership filter for statement.bankAccount.ownershipType
+  const ownershipWhere = ownership
+    ? { statement: { bankAccount: { ownershipType: ownership } } }
+    : {}
+
   // If a specific category is selected, return transactions for that category
   if (categoryFilter) {
     const transactions = await prisma.transaction.findMany({
@@ -111,6 +117,7 @@ export async function GET(request: NextRequest) {
         userId,
         category: categoryFilter,
         transactionDate: { gte: start, lte: end },
+        ...ownershipWhere,
       },
       orderBy: { transactionDate: 'desc' },
       include: {
@@ -174,6 +181,7 @@ export async function GET(request: NextRequest) {
         userId,
         category: categoryFilter,
         transactionDate: { gte: prevStart, lte: prevEnd },
+        ...ownershipWhere,
       },
       _sum: { amount: true },
     })
@@ -197,6 +205,7 @@ export async function GET(request: NextRequest) {
         userId,
         transactionType: DEBIT_TYPE,
         transactionDate: { gte: start, lte: end },
+        ...ownershipWhere,
       },
       _sum: { amount: true },
       _count: true,
@@ -207,6 +216,7 @@ export async function GET(request: NextRequest) {
         userId,
         transactionType: DEBIT_TYPE,
         transactionDate: { gte: prevStart, lte: prevEnd },
+        ...ownershipWhere,
       },
       _sum: { amount: true },
       _count: true,
@@ -225,6 +235,7 @@ export async function GET(request: NextRequest) {
       userId,
       transactionType: DEBIT_TYPE,
       transactionDate: { gte: start, lte: end },
+      ...ownershipWhere,
     },
     _sum: { amount: true },
     _count: true,
