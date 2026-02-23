@@ -31,16 +31,22 @@ export function ReprocessButton({
     }
 
     setIsProcessing(true)
-    const toastId = toast.loading('Processing...', {
+    const toastId = toast.loading('Reprocessing statement...', {
       description: fileName,
     })
 
     try {
+      toast.loading('Processing statement with AI...', {
+        id: toastId,
+        description: fileName,
+      })
+
       const res = await fetch(`/api/statements/${statementId}/reprocess`, {
         method: 'POST',
       })
 
       const result = await res.json()
+      const jobId = result.jobId as string | undefined
 
       if (!res.ok) {
         throw new Error(result.error || 'Processing failed')
@@ -52,6 +58,10 @@ export function ReprocessButton({
       toast.success('Statement processed!', {
         id: toastId,
         description: `${transactionCount} transactions — ${balanceStatus}`,
+        action: jobId ? {
+          label: 'View details',
+          onClick: () => { window.location.href = `/jobs/${jobId}` },
+        } : undefined,
       })
 
       router.refresh()
