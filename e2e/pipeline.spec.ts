@@ -1,19 +1,20 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { ensureLoggedIn } from './helpers'
 import { join } from 'path'
-import { writeFileSync, mkdirSync, existsSync } from 'fs'
+import { mkdirSync, existsSync, readdirSync } from 'fs'
 
 /**
  * Pipeline integration tests: upload → classify → process → transactions.
  *
  * These tests verify the full end-to-end flow of uploading a bank statement
  * PDF and verifying that transactions are extracted and categorized.
+ *
+ * Requires a real bank statement PDF to run. All tests skip gracefully
+ * when no PDF is available (e.g. in CI).
  */
 
 const TEST_FIXTURES_DIR = join(__dirname, 'fixtures')
 
-// Create a minimal test PDF with bank statement text.
-// We use a synthetic PDF with embedded text that the AI can parse.
 function ensureTestFixtures() {
   if (!existsSync(TEST_FIXTURES_DIR)) {
     mkdirSync(TEST_FIXTURES_DIR, { recursive: true })
@@ -21,8 +22,20 @@ function ensureTestFixtures() {
 }
 
 test.describe('Statement Upload Pipeline', () => {
+  // Tests depend on the upload test running first — run in serial
+  // so if the upload test skips, dependent tests also skip.
+  test.describe.configure({ mode: 'serial' })
+
   test.beforeEach(async ({ page }) => {
     ensureTestFixtures()
+
+    // Skip ALL pipeline tests when no test PDF is available (e.g. CI)
+    const testPdf = getTestStatementPath()
+    if (!testPdf) {
+      test.skip(true, 'No test PDF available — skipping pipeline test')
+      return
+    }
+
     await ensureLoggedIn(page)
   })
 
@@ -35,11 +48,7 @@ test.describe('Statement Upload Pipeline', () => {
     const initialRows = await page.locator('tbody tr').count()
 
     // Upload a test PDF via the file input
-    const testPdf = getTestStatementPath()
-    if (!testPdf) {
-      test.skip(true, 'No test PDF available — skipping pipeline test')
-      return
-    }
+    const testPdf = getTestStatementPath()!
 
     // Use the Uppy uploader — find the file input
     const fileInput = page.locator('input[type="file"]')
@@ -108,14 +117,13 @@ test.describe('Statement Upload Pipeline', () => {
 })
 
 /**
- * Returns path to a real test statement PDF if one exists in the fixtures directory.
- * Tests should be run with a test fixture available.
+ * Returns path to a real test statement PDF if one exists locally.
+ * Returns null in CI or when no fixtures are available.
  */
 function getTestStatementPath(): string | null {
   // Check for Corporate/2025/Primary as a test source
   const realStatementDir = '/Users/michaelyagudaev/Library/CloudStorage/GoogleDrive-michael@nano3labs.com/My Drive/Tax/Corporate/2025/Primary'
   try {
-    const { readdirSync } = require('fs')
     const files = readdirSync(realStatementDir)
     const pdf = files.find((f: string) => f.endsWith('.pdf'))
     if (pdf) return join(realStatementDir, pdf)
@@ -124,12 +132,10 @@ function getTestStatementPath(): string | null {
   }
 
   // Check fixtures directory
-  const fixtureDir = TEST_FIXTURES_DIR
   try {
-    const { readdirSync } = require('fs')
-    const files = readdirSync(fixtureDir)
+    const files = readdirSync(TEST_FIXTURES_DIR)
     const pdf = files.find((f: string) => f.endsWith('.pdf'))
-    if (pdf) return join(fixtureDir, pdf)
+    if (pdf) return join(TEST_FIXTURES_DIR, pdf)
   } catch {
     // No fixtures
   }
