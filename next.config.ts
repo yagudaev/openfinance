@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     '@opentelemetry/sdk-trace-base',
     '@langfuse/otel',
     '@langfuse/tracing',
+    'googleapis',
   ],
 }
 

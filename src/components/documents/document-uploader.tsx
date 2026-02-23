@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { GoogleDriveImportWizard } from './google-drive-import-wizard'
 import { showJobProgressToast } from '@/lib/jobs/job-toast'
 
 import '@uppy/core/css/style.min.css'
@@ -49,6 +50,7 @@ interface DocumentUploadZoneProps {
 export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
+  const [driveWizardOpen, setDriveWizardOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[]>([])
   const [indicatorExpanded, setIndicatorExpanded] = useState(false)
@@ -261,10 +263,6 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
     setModalOpen(true)
   }
 
-  function handleImportFromGoogleDrive() {
-    toast.info('Google Drive import coming soon')
-  }
-
   // ---- Computed state ----
   const showIndicator = trackedFiles.length > 0
   const inProgressCount = trackedFiles.filter(f =>
@@ -313,7 +311,7 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
               <FileUp className="h-4 w-4" />
               Import from File
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleImportFromGoogleDrive}>
+            <DropdownMenuItem onClick={() => setDriveWizardOpen(true)}>
               <HardDrive className="h-4 w-4" />
               Import from Google Drive
             </DropdownMenuItem>
@@ -337,6 +335,12 @@ export function DocumentUploadZone({ children }: DocumentUploadZoneProps) {
           uppy.clear()
           setModalOpen(false)
         }}
+      />
+
+      {/* Google Drive import wizard */}
+      <GoogleDriveImportWizard
+        open={driveWizardOpen}
+        onOpenChange={setDriveWizardOpen}
       />
 
       {/* Floating upload indicator */}

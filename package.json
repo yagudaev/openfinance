@@ -47,6 +47,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
     "exa-js": "^2.4.0",
+    "googleapis": "^171.4.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.400.0",
     "mathjs": "^15.1.1",
