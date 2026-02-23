@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { auth } from '@/lib/auth'
 import { updateAccount, deactivateAccount } from '@/lib/services/net-worth'
+import { recomputeDailyNetWorth } from '@/lib/services/daily-net-worth'
 import {
   ASSET_CATEGORIES,
   LIABILITY_CATEGORIES,
@@ -86,6 +87,8 @@ export async function DELETE(
   if (!success) {
     return NextResponse.json({ error: 'Account not found' }, { status: 404 })
   }
+
+  await recomputeDailyNetWorth(session.user.id)
 
   return NextResponse.json({ success: true })
 }
