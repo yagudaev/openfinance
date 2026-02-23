@@ -6,23 +6,25 @@ import { Loader2 } from 'lucide-react'
 
 import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
 import { PageFilterBar } from '@/components/layout/page-filter-bar'
-import { PeriodSelector } from '@/components/expenses/period-selector'
+import { TimePeriodSelector } from '@/components/shared/time-period-selector'
 import { ExpenseBreadcrumb } from '@/components/expenses/expense-breadcrumb'
 import { ExpenseOverview } from '@/components/expenses/expense-overview'
 import { CategoryDrilldown } from '@/components/expenses/category-drilldown'
 import { TransactionDetailPanel } from '@/components/expenses/transaction-detail-panel'
 import type {
-  PeriodKey,
   ExpenseOverviewData,
   CategoryDetailData,
   TransactionDetail,
 } from '@/lib/types/expenses'
+import { getDateRangeBounds, type DateRangePreset } from '@/lib/types/time-period'
 
 export default function ExpensesPage() {
   const searchParams = useSearchParams()
   const ownershipFilter: OwnershipFilterType = (searchParams.get('ownership') as OwnershipFilterType) || 'combined'
+  const period = (searchParams.get('period') as DateRangePreset) || 'this-month'
+  const dateFrom = searchParams.get('dateFrom') || ''
+  const dateTo = searchParams.get('dateTo') || ''
 
-  const [period, setPeriod] = useState<PeriodKey>('this-month')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedTransaction, setSelectedTransaction] =
     useState<TransactionDetail | null>(null)
@@ -38,14 +40,47 @@ export default function ExpensesPage() {
     async (category?: string) => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({ period })
+        // Convert the shared period to the expenses API format
+        const apiParams = new URLSearchParams()
         if (ownershipFilter !== 'combined') {
-          params.set('ownership', ownershipFilter)
+          apiParams.set('ownership', ownershipFilter)
         }
+
+        if (period === 'custom' && (dateFrom || dateTo)) {
+          apiParams.set('period', 'custom')
+          if (dateFrom) apiParams.set('startDate', dateFrom)
+          if (dateTo) apiParams.set('endDate', dateTo)
+        } else {
+          // Map shared presets to expense API period keys
+          const periodMap: Record<string, string> = {
+            'this-month': 'this-month',
+            'last-month': 'last-month',
+            'this-year': 'ytd',
+            'last-3-months': 'last-12-months',
+            'all-time': 'last-12-months',
+          }
+
+          // For presets that aren't directly mapped, compute custom dates
+          const directMapped = periodMap[period]
+          if (directMapped) {
+            apiParams.set('period', directMapped)
+          } else {
+            // Compute the date range and pass as custom
+            const range = getDateRangeBounds(period, dateFrom, dateTo)
+            apiParams.set('period', 'custom')
+            if (range.from) {
+              apiParams.set('startDate', range.from.toISOString().split('T')[0])
+            }
+            if (range.to) {
+              apiParams.set('endDate', range.to.toISOString().split('T')[0])
+            }
+          }
+        }
+
         if (category) {
-          params.set('category', category)
+          apiParams.set('category', category)
         }
-        const res = await fetch(`/api/expenses/breakdown?${params.toString()}`)
+        const res = await fetch(`/api/expenses/breakdown?${apiParams.toString()}`)
         if (!res.ok) return
 
         const data = await res.json()
@@ -59,8 +94,13 @@ export default function ExpensesPage() {
         setLoading(false)
       }
     },
-    [period, ownershipFilter],
+    [period, dateFrom, dateTo, ownershipFilter],
   )
+
+  useEffect(() => {
+    setSelectedCategory(null)
+    setSelectedTransaction(null)
+  }, [period, dateFrom, dateTo])
 
   useEffect(() => {
     if (selectedCategory) {
@@ -68,7 +108,7 @@ export default function ExpensesPage() {
     } else {
       fetchData()
     }
-  }, [period, selectedCategory, ownershipFilter, fetchData])
+  }, [period, dateFrom, dateTo, selectedCategory, ownershipFilter, fetchData])
 
   function handleCategoryClick(category: string) {
     setSelectedCategory(category)
@@ -101,12 +141,6 @@ export default function ExpensesPage() {
     }
   }
 
-  function handlePeriodChange(newPeriod: PeriodKey) {
-    setPeriod(newPeriod)
-    setSelectedCategory(null)
-    setSelectedTransaction(null)
-  }
-
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -124,7 +158,11 @@ export default function ExpensesPage() {
           </div>
         </div>
         <PageFilterBar ownership={ownershipFilter}>
-          <PeriodSelector value={period} onChange={handlePeriodChange} />
+          <TimePeriodSelector
+            value={period}
+            customFrom={dateFrom}
+            customTo={dateTo}
+          />
         </PageFilterBar>
       </div>
 

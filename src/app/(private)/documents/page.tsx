@@ -8,13 +8,21 @@ import { PageFilterBar } from '@/components/layout/page-filter-bar'
 import { DocumentFilters } from '@/components/documents/document-filters'
 import { DocumentTable } from '@/components/documents/document-table'
 import { DocumentUploadZone } from '@/components/documents/document-uploader'
+import { TimePeriodSelector } from '@/components/shared/time-period-selector'
 import type { DocumentItem, DocumentStatus } from '@/components/documents/document-types'
+import {
+  getDateRangeBounds,
+  type DateRangePreset,
+} from '@/lib/types/time-period'
 
 interface DocumentsPageProps {
   searchParams: Promise<{
     search?: string
     category?: string
     ownership?: OwnershipFilterType
+    period?: string
+    dateFrom?: string
+    dateTo?: string
   }>
 }
 
@@ -35,6 +43,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const search = params.search || ''
   const category = params.category || ''
   const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
+  const period = (params.period as DateRangePreset) || 'all-time'
+  const dateFrom = params.dateFrom || ''
+  const dateTo = params.dateTo || ''
+
+  // Compute date filter
+  const dateRange = getDateRangeBounds(period, dateFrom, dateTo)
 
   // Query documents — always exclude statement-type docs since those are shown
   // via BankStatement records below (avoids duplicate entries)
@@ -45,6 +59,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   }
   if (search) {
     docWhere.fileName = { contains: search }
+  }
+  if (dateRange.from || dateRange.to) {
+    const dateFilter: Record<string, Date> = {}
+    if (dateRange.from) dateFilter.gte = dateRange.from
+    if (dateRange.to) dateFilter.lte = dateRange.to
+    docWhere.uploadedAt = dateFilter
   }
 
   const documents = skipDocuments
@@ -69,6 +89,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
     }
     if (ownershipFilter !== 'combined') {
       stmtWhere.bankAccount = { ownershipType: ownershipFilter }
+    }
+    if (dateRange.from || dateRange.to) {
+      const dateFilter: Record<string, Date> = {}
+      if (dateRange.from) dateFilter.gte = dateRange.from
+      if (dateRange.to) dateFilter.lte = dateRange.to
+      stmtWhere.createdAt = dateFilter
     }
 
     const statements = await prisma.bankStatement.findMany({
@@ -123,9 +149,15 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
 
   return (
     <DocumentUploadZone>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-heading text-2xl font-bold text-gray-900">Documents</h1>
-        <PageFilterBar ownership={ownershipFilter} />
+        <PageFilterBar ownership={ownershipFilter}>
+          <TimePeriodSelector
+            value={period}
+            customFrom={dateFrom}
+            customTo={dateTo}
+          />
+        </PageFilterBar>
       </div>
       <DocumentFilters search={search} category={category} />
       <DocumentTable documents={documentItems} />

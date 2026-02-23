@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import { subMonths, format } from 'date-fns'
+import { format } from 'date-fns'
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
@@ -12,9 +12,19 @@ import {
 import { CashflowChart } from '@/components/dashboard/cashflow-chart'
 import { PageFilterBar } from '@/components/layout/page-filter-bar'
 import { NetWorthDashboard } from '@/components/net-worth/net-worth-dashboard'
+import { TimePeriodSelector } from '@/components/shared/time-period-selector'
+import {
+  getDateRangeBounds,
+  type DateRangePreset,
+} from '@/lib/types/time-period'
 
 interface DashboardPageProps {
-  searchParams: Promise<{ ownership?: OwnershipFilterType }>
+  searchParams: Promise<{
+    ownership?: OwnershipFilterType
+    period?: DateRangePreset
+    dateFrom?: string
+    dateTo?: string
+  }>
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -26,22 +36,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const params = await searchParams
   const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
+  const period: DateRangePreset = params.period as DateRangePreset ?? 'all-time'
+  const dateFrom = params.dateFrom ?? ''
+  const dateTo = params.dateTo ?? ''
+
+  // Compute date filter from the period
+  const dateRange = getDateRangeBounds(period, dateFrom, dateTo)
+  const dateFilter = (dateRange.from || dateRange.to)
+    ? { from: dateRange.from, to: dateRange.to }
+    : undefined
 
   const { stats, cashflowData, totalTransactions } = await getDashboard(
     session.user.id,
     ownershipFilter,
+    dateFilter,
   )
 
-  const lastMonthName = format(subMonths(new Date(), 1), 'MMMM yyyy')
+  const periodLabel = getPeriodLabel(period, dateFrom, dateTo)
 
   const avgIncome =
-    cashflowData.reduce((acc, d) => acc + d.income, 0) / cashflowData.length
+    cashflowData.length > 0
+      ? cashflowData.reduce((acc, d) => acc + d.income, 0) / cashflowData.length
+      : 0
   const avgExpenses =
-    cashflowData.reduce((acc, d) => acc + d.expenses, 0) / cashflowData.length
+    cashflowData.length > 0
+      ? cashflowData.reduce((acc, d) => acc + d.expenses, 0) / cashflowData.length
+      : 0
 
   const statsCards = [
     {
-      title: `Monthly Income (${lastMonthName})`,
+      title: `Income (${periodLabel})`,
       value: formatCurrency(stats.monthlyIncome),
       changePercent: stats.changeIncomePercent,
       isPositiveGood: true,
@@ -49,7 +73,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       iconColor: 'text-green-600 bg-green-50',
     },
     {
-      title: `Monthly Expenses (${lastMonthName})`,
+      title: `Expenses (${periodLabel})`,
       value: formatCurrency(stats.monthlyExpenses),
       changePercent: stats.changeExpensesPercent,
       isPositiveGood: false,
@@ -57,7 +81,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       iconColor: 'text-red-600 bg-red-50',
     },
     {
-      title: 'Avg Monthly Income (12 mo)',
+      title: `Avg Monthly Income (${cashflowData.length} mo)`,
       value: formatCurrency(avgIncome),
       changePercent: null,
       isPositiveGood: true,
@@ -65,7 +89,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       iconColor: 'text-green-600 bg-green-50',
     },
     {
-      title: 'Avg Monthly Expenses (12 mo)',
+      title: `Avg Monthly Expenses (${cashflowData.length} mo)`,
       value: formatCurrency(avgExpenses),
       changePercent: null,
       isPositiveGood: false,
@@ -76,7 +100,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">
             Welcome back{session.user.name ? `, ${session.user.name}` : ''}
@@ -85,7 +109,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             Here&apos;s what&apos;s happening with your finances today
           </p>
         </div>
-        <PageFilterBar ownership={ownershipFilter} />
+        <PageFilterBar ownership={ownershipFilter}>
+          <TimePeriodSelector
+            value={period}
+            customFrom={dateFrom}
+            customTo={dateTo}
+          />
+        </PageFilterBar>
       </div>
 
       {totalTransactions === 0 && (
@@ -150,7 +180,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">
-            Cashflow (Last 12 Months)
+            Cashflow ({cashflowData.length > 0 ? `${cashflowData.length} Months` : 'No data'})
           </h2>
           <TrendingUp className="h-5 w-5 text-gray-400" />
         </div>
@@ -158,4 +188,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
     </div>
   )
+}
+
+function getPeriodLabel(
+  period: DateRangePreset,
+  dateFrom: string,
+  dateTo: string,
+): string {
+  if (period === 'custom' && dateFrom && dateTo) {
+    const from = new Date(dateFrom + 'T00:00:00')
+    const to = new Date(dateTo + 'T00:00:00')
+    return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`
+  }
+
+  const labels: Record<string, string> = {
+    'today': 'Today',
+    'last-7-days': 'Last 7 days',
+    'last-30-days': 'Last 30 days',
+    'this-month': 'This month',
+    'last-month': 'Last month',
+    'this-quarter': 'This quarter',
+    'this-year': 'This year',
+    'last-year': 'Last year',
+    'last-3-months': 'Last 3 months',
+    'all-time': 'All time',
+  }
+  return labels[period] ?? 'Last month'
 }

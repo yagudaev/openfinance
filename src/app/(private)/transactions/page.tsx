@@ -2,16 +2,11 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { TimePeriodSelector } from '@/components/shared/time-period-selector'
 import {
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfQuarter,
-  endOfQuarter,
-  startOfYear,
-  endOfYear,
-  subYears,
-} from 'date-fns'
+  getDateRangeBounds,
+  type DateRangePreset,
+} from '@/lib/types/time-period'
 
 import type { OwnershipFilter as OwnershipFilterType } from '@/lib/services/dashboard-types'
 import { PageFilterBar } from '@/components/layout/page-filter-bar'
@@ -28,32 +23,10 @@ interface TransactionsPageProps {
     order?: string
     ownership?: OwnershipFilterType
     accounts?: string
-    dateRange?: string
+    period?: string
     dateFrom?: string
     dateTo?: string
   }>
-}
-
-function getDateRangeBounds(dateRange: string): { from: Date; to: Date } | null {
-  const now = new Date()
-  switch (dateRange) {
-    case 'this-month':
-      return { from: startOfMonth(now), to: endOfMonth(now) }
-    case 'last-month': {
-      const lastMonth = subMonths(now, 1)
-      return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) }
-    }
-    case 'this-quarter':
-      return { from: startOfQuarter(now), to: endOfQuarter(now) }
-    case 'this-year':
-      return { from: startOfYear(now), to: endOfYear(now) }
-    case 'last-year': {
-      const lastYear = subYears(now, 1)
-      return { from: startOfYear(lastYear), to: endOfYear(lastYear) }
-    }
-    default:
-      return null
-  }
 }
 
 export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
@@ -69,7 +42,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const ownershipFilter: OwnershipFilterType = params.ownership ?? 'combined'
   const ownershipType = ownershipFilter === 'combined' ? '' : ownershipFilter
   const selectedAccountIds = params.accounts ? params.accounts.split(',').filter(Boolean) : []
-  const dateRange = params.dateRange === '__all__' ? '' : (params.dateRange || '')
+  const period = (params.period as DateRangePreset) || 'all-time'
   const dateFrom = params.dateFrom || ''
   const dateTo = params.dateTo || ''
 
@@ -113,23 +86,13 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     }
   }
 
-  // Date range filter
-  if (dateRange === 'custom') {
-    if (dateFrom || dateTo) {
-      const dateFilter: Record<string, Date> = {}
-      if (dateFrom) {
-        dateFilter.gte = new Date(dateFrom + 'T00:00:00')
-      }
-      if (dateTo) {
-        dateFilter.lte = new Date(dateTo + 'T23:59:59')
-      }
-      where.transactionDate = dateFilter
-    }
-  } else if (dateRange) {
-    const bounds = getDateRangeBounds(dateRange)
-    if (bounds) {
-      where.transactionDate = { gte: bounds.from, lte: bounds.to }
-    }
+  // Date range filter using the shared time period logic
+  const dateRange = getDateRangeBounds(period, dateFrom, dateTo)
+  if (dateRange.from || dateRange.to) {
+    const dateFilter: Record<string, Date> = {}
+    if (dateRange.from) dateFilter.gte = dateRange.from
+    if (dateRange.to) dateFilter.lte = dateRange.to
+    where.transactionDate = dateFilter
   }
 
   const [transactions, totalCount, filteredStats] = await Promise.all([
@@ -159,14 +122,20 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-gray-900">Transactions</h1>
           <p className="mt-1 text-sm text-gray-500">
             {transactions.length} of {totalCount} transactions
           </p>
         </div>
-        <PageFilterBar ownership={ownershipFilter} />
+        <PageFilterBar ownership={ownershipFilter}>
+          <TimePeriodSelector
+            value={period}
+            customFrom={dateFrom}
+            customTo={dateTo}
+          />
+        </PageFilterBar>
       </div>
 
       <TransactionFilters
@@ -178,9 +147,6 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         totalWithdrawals={totalWithdrawals}
         accounts={accounts}
         selectedAccountIds={selectedAccountIds}
-        dateRange={dateRange}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
       />
 
       <TransactionTable

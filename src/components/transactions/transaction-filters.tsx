@@ -2,17 +2,10 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
-import { Search, ChevronDown, X, Calendar } from 'lucide-react'
+import { Search, ChevronDown, X } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -35,20 +28,7 @@ interface TransactionFiltersProps {
   totalWithdrawals: number
   accounts: AccountInfo[]
   selectedAccountIds: string[]
-  dateRange: string
-  dateFrom: string
-  dateTo: string
 }
-
-const DATE_RANGE_PRESETS = [
-  { value: '', label: 'All time' },
-  { value: 'this-month', label: 'This month' },
-  { value: 'last-month', label: 'Last month' },
-  { value: 'this-quarter', label: 'This quarter' },
-  { value: 'this-year', label: 'This year' },
-  { value: 'last-year', label: 'Last year' },
-  { value: 'custom', label: 'Custom range' },
-]
 
 export function TransactionFilters({
   search,
@@ -59,9 +39,6 @@ export function TransactionFilters({
   totalWithdrawals,
   accounts,
   selectedAccountIds,
-  dateRange,
-  dateFrom,
-  dateTo,
 }: TransactionFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -98,15 +75,6 @@ export function TransactionFilters({
     updateParam('accounts', Array.from(current).join(','))
   }
 
-  function handleDateRangeChange(value: string) {
-    const normalizedValue = value === '__all__' ? '' : value
-    if (normalizedValue === 'custom') {
-      updateParams({ dateRange: 'custom', dateFrom, dateTo })
-    } else {
-      updateParams({ dateRange: normalizedValue, dateFrom: '', dateTo: '' })
-    }
-  }
-
   function handleClearFilters() {
     const params = new URLSearchParams()
     if (searchValue) {
@@ -115,7 +83,7 @@ export function TransactionFilters({
     router.push(`/transactions?${params.toString()}`)
   }
 
-  const hasActiveFilters = selectedAccountIds.length > 0 || dateRange || category || type
+  const hasActiveFilters = selectedAccountIds.length > 0 || category || type
 
   const accountLabel = selectedAccountIds.length === 0
     ? 'All accounts'
@@ -186,45 +154,6 @@ export function TransactionFilters({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Date range filter */}
-        <div className="flex items-center gap-1">
-          <Calendar className="h-3.5 w-3.5 text-gray-400" />
-          <Select
-            value={dateRange || '__all__'}
-            onValueChange={handleDateRangeChange}
-          >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="All time" />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_RANGE_PRESETS.map(preset => (
-                <SelectItem key={preset.value || '__all__'} value={preset.value || '__all__'}>
-                  {preset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Custom date inputs */}
-        {dateRange === 'custom' && (
-          <div className="flex items-center gap-1">
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={e => updateParam('dateFrom', e.target.value)}
-              className="h-8 w-[140px] text-xs"
-            />
-            <span className="text-xs text-gray-400">to</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={e => updateParam('dateTo', e.target.value)}
-              className="h-8 w-[140px] text-xs"
-            />
-          </div>
-        )}
 
         {/* Type filter */}
         <div className="flex gap-1">
