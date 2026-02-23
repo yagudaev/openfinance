@@ -180,7 +180,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">
-            Cashflow ({cashflowData.length > 0 ? `${cashflowData.length} Months` : 'No data'})
+            Cashflow ({cashflowData.length > 0 ? `${cashflowData.length} ${cashflowData.length === 1 ? 'Month' : 'Months'}` : 'No data'})
           </h2>
           <TrendingUp className="h-5 w-5 text-gray-400" />
         </div>
