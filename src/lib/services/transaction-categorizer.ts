@@ -112,7 +112,13 @@ async function categorizeBatch(
 
 ${descriptions}
 
-Pick the single best category for each transaction based on the description and amount. Use the category names exactly as listed above.
+Rules:
+- Pick the single best category for each transaction based on the merchant/description and amount.
+- Use the category names EXACTLY as listed above.
+- Categorize based on WHAT was purchased, not what type of account it came from. The account name (e.g. "Business Cash Back Mastercard") describes the account, NOT the expense category. A coffee bought on a business credit card is still "Dining", not "Business".
+- Prefer specific categories over generic ones. For example: software subscriptions (GitHub, OpenAI, Notion, Vercel, Azure, Google Workspace) should be "Subscriptions" not "Business". Marketing tools (Mailchimp, EmailOctopus, advertising) and social media platforms (X Corp, Meta) used for promotion should be "Business" only if no better match exists.
+- Interest charges and finance charges should be categorized as "Other" unless a more specific fees category exists.
+- Payments to the credit card itself (e.g. "Payment Thank You", "Payment Received") are "Transfer" — they are internal transfers between accounts, not expenses.
 
 Respond with JSON:
 {
