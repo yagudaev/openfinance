@@ -16,13 +16,21 @@ type PeriodKey =
   | 'last-month'
   | 'ytd'
   | 'last-12-months'
+  | 'all-time'
   | 'custom'
+
+interface DateRange {
+  start?: Date
+  end?: Date
+  prevStart?: Date
+  prevEnd?: Date
+}
 
 function getDateRange(
   period: PeriodKey,
   customStart?: string,
   customEnd?: string,
-): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
+): DateRange {
   const now = new Date()
 
   switch (period) {
@@ -55,6 +63,10 @@ function getDateRange(
       const prevStart = startOfMonth(subMonths(now, 23))
       const prevEnd = endOfMonth(subMonths(now, 12))
       return { start, end, prevStart, prevEnd }
+    }
+    case 'all-time': {
+      // No date bounds — query everything
+      return {}
     }
     case 'custom': {
       if (!customStart || !customEnd) {
@@ -110,13 +122,32 @@ export async function GET(request: NextRequest) {
     ? { statement: { bankAccount: { ownershipType: ownership } } }
     : {}
 
+  // Build date filter — omit when all-time (no bounds)
+  const dateWhere = (start || end)
+    ? {
+        transactionDate: {
+          ...(start ? { gte: start } : {}),
+          ...(end ? { lte: end } : {}),
+        },
+      }
+    : {}
+
+  const prevDateWhere = (prevStart || prevEnd)
+    ? {
+        transactionDate: {
+          ...(prevStart ? { gte: prevStart } : {}),
+          ...(prevEnd ? { lte: prevEnd } : {}),
+        },
+      }
+    : {}
+
   // If a specific category is selected, return transactions for that category
   if (categoryFilter) {
     const transactions = await prisma.transaction.findMany({
       where: {
         userId,
         category: categoryFilter,
-        transactionDate: { gte: start, lte: end },
+        ...dateWhere,
         ...ownershipWhere,
       },
       orderBy: { transactionDate: 'desc' },
@@ -180,7 +211,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId,
         category: categoryFilter,
-        transactionDate: { gte: prevStart, lte: prevEnd },
+        ...prevDateWhere,
         ...ownershipWhere,
       },
       _sum: { amount: true },
@@ -204,7 +235,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId,
         transactionType: DEBIT_TYPE,
-        transactionDate: { gte: start, lte: end },
+        ...dateWhere,
         ...ownershipWhere,
       },
       _sum: { amount: true },
@@ -215,7 +246,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId,
         transactionType: DEBIT_TYPE,
-        transactionDate: { gte: prevStart, lte: prevEnd },
+        ...prevDateWhere,
         ...ownershipWhere,
       },
       _sum: { amount: true },
@@ -234,7 +265,7 @@ export async function GET(request: NextRequest) {
     where: {
       userId,
       transactionType: DEBIT_TYPE,
-      transactionDate: { gte: start, lte: end },
+      ...dateWhere,
       ...ownershipWhere,
     },
     _sum: { amount: true },
@@ -304,7 +335,7 @@ export async function GET(request: NextRequest) {
     prevTotalSpending,
     categories,
     period,
-    startDate: start.toISOString(),
-    endDate: end.toISOString(),
+    startDate: start?.toISOString() ?? null,
+    endDate: end?.toISOString() ?? null,
   })
 }
