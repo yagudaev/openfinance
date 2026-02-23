@@ -175,7 +175,7 @@ function ThreadList({
               onClick={() => {
                 if (!isEditing) onSelectThread(thread.id)
               }}
-              className="flex min-w-0 flex-1 flex-col gap-0.5"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
             >
               {isEditing ? (
                 <EditableInput
