@@ -1,13 +1,5 @@
-import { convertToModelMessages, streamText, UIMessage, stepCountIs } from 'ai'
-import { openai } from '@ai-sdk/openai'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import {
-  observe,
-  updateActiveObservation,
-  updateActiveTrace,
-  getActiveTraceId,
-} from '@langfuse/tracing'
-import { trace } from '@opentelemetry/api'
+import { UIMessage } from 'ai'
+import { createTool, setWaitUntil } from '@voltagent/core'
 import { after } from 'next/server'
 
 import { auth } from '@/lib/auth'
@@ -17,7 +9,7 @@ import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
-import { langfuseSpanProcessor } from '@/instrumentation'
+import { agent } from '@/voltagent'
 
 export const maxDuration = 120
 
@@ -29,18 +21,6 @@ function generateTitle(text: string): string {
   return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...'
 }
 
-function getModel(modelId: string) {
-  if (modelId.startsWith('openrouter/')) {
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY,
-    })
-    return openrouter(modelId.replace('openrouter/', ''))
-  }
-
-  const openaiModelId = modelId.replace('openai/', '')
-  return openai(openaiModelId)
-}
-
 function extractTextContent(message: UIMessage): string {
   return message.parts
     ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
@@ -48,7 +28,23 @@ function extractTextContent(message: UIMessage): string {
     .join('\n') ?? ''
 }
 
-const handler = async (request: Request) => {
+/**
+ * Convert AI SDK tools (from createChatTools) to VoltAgent Tool instances.
+ * This is a mechanical conversion: add `name`, rename `inputSchema` to `parameters`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function convertAiSdkTools(toolMap: Record<string, any>) {
+  return Object.entries(toolMap).map(([name, t]) =>
+    createTool({
+      name,
+      description: t.description ?? name,
+      parameters: t.inputSchema,
+      execute: t.execute,
+    }),
+  )
+}
+
+export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
@@ -71,7 +67,12 @@ const handler = async (request: Request) => {
     isNewUser,
     expenseCategories: expenseCategories || null,
   })
-  const tools = createChatTools(session.user.id)
+
+  // Convert existing AI SDK tools to VoltAgent format, excluding evaluate_expression
+  // (it's already defined as a VoltAgent tool in the agent)
+  const existingTools = createChatTools(session.user.id)
+  const { evaluate_expression: _, ...toolsToConvert } = existingTools
+  const additionalTools = convertAiSdkTools(toolsToConvert)
 
   // Save user message to DB if we have a thread
   if (threadId) {
@@ -106,41 +107,38 @@ const handler = async (request: Request) => {
   const lastUserMessage = messages.filter(m => m.role === 'user').pop()
   const userMessageText = lastUserMessage ? extractTextContent(lastUserMessage) : undefined
 
-  // Set Langfuse trace context
-  updateActiveObservation({
-    input: userMessageText,
-  })
-
-  updateActiveTrace({
-    name: 'chat-message',
-    sessionId: threadId,
-    userId: session.user.id,
-    input: userMessageText,
-  })
-
   const startTime = Date.now()
 
-  const result = streamText({
-    model: getModel(modelId),
-    system: systemPrompt,
-    messages: await convertToModelMessages(messages),
-    tools,
-    stopWhen: stepCountIs(5),
-    experimental_telemetry: { isEnabled: true },
-    onFinish: async ({ text, response, steps, totalUsage, finishReason }) => {
+  const result = await agent.streamText(messages, {
+    tools: additionalTools,
+    context: {
+      systemPrompt,
+      modelId,
+    },
+    onFinish: async (finishResult: {
+      text?: string
+      response?: { messages: Array<{ role: string; content: unknown }> }
+      steps?: Array<{
+        text?: string
+        toolCalls: Array<{ toolName: string; input: unknown }>
+        toolResults: Array<{ toolName: string; input: unknown; output: unknown }>
+        finishReason: string
+        usage: { inputTokens: number; outputTokens: number }
+      }>
+      totalUsage?: { inputTokens?: number; outputTokens?: number }
+      finishReason?: string
+    }) => {
       const latencyMs = Date.now() - startTime
-
-      // Get the Langfuse trace ID from the active span
-      const traceId = getActiveTraceId()
+      const { text, response, steps, totalUsage, finishReason } = finishResult
 
       // Save assistant message to thread
       if (threadId) {
         try {
           // Extract tool call info from response for debugging/tracing
-          const toolCalls = response.messages
-            .filter(m => m.role === 'assistant')
+          const toolCalls = response?.messages
+            ?.filter(m => m.role === 'assistant')
             .flatMap(m => Array.isArray(m.content) ? m.content : [])
-            .filter(c => typeof c === 'object' && c.type === 'tool-call')
+            .filter(c => typeof c === 'object' && c !== null && 'type' in c && c.type === 'tool-call') ?? []
 
           await prisma.chatMessage.create({
             data: {
@@ -149,7 +147,6 @@ const handler = async (request: Request) => {
               content: text || '',
               toolCalls: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
               model: modelId,
-              traceId: traceId ?? null,
             },
           })
 
@@ -171,7 +168,7 @@ const handler = async (request: Request) => {
 
       // Save trace data for debugging
       try {
-        const stepsData = steps.map((step, index) => ({
+        const stepsData = steps?.map((step, index) => ({
           stepNumber: index,
           text: step.text || undefined,
           toolCalls: step.toolCalls.map(tc => ({
@@ -188,18 +185,18 @@ const handler = async (request: Request) => {
             inputTokens: step.usage.inputTokens,
             outputTokens: step.usage.outputTokens,
           },
-        }))
+        })) ?? []
 
         await prisma.chatTrace.create({
           data: {
             userId: session.user.id,
             threadId: threadId ?? null,
             model: modelId,
-            inputTokens: totalUsage.inputTokens ?? null,
-            outputTokens: totalUsage.outputTokens ?? null,
-            totalTokens: (totalUsage.inputTokens ?? 0) + (totalUsage.outputTokens ?? 0) || null,
+            inputTokens: totalUsage?.inputTokens ?? null,
+            outputTokens: totalUsage?.outputTokens ?? null,
+            totalTokens: (totalUsage?.inputTokens ?? 0) + (totalUsage?.outputTokens ?? 0) || null,
             latencyMs,
-            finishReason,
+            finishReason: finishReason ?? null,
             steps: JSON.stringify(stepsData),
             userMessage: userMessageText ?? null,
             assistantText: text || null,
@@ -208,28 +205,11 @@ const handler = async (request: Request) => {
       } catch (error) {
         console.error('Failed to save chat trace:', error)
       }
-
-      // Update Langfuse trace with output after stream completes
-      updateActiveObservation({
-        output: text,
-      })
-      updateActiveTrace({
-        output: text,
-      })
-
-      // End the span manually since streaming keeps it open
-      trace.getActiveSpan()?.end()
     },
   })
 
-  // Flush Langfuse traces after the response is sent (critical for serverless)
-  after(async () => await langfuseSpanProcessor.forceFlush())
+  // Enable non-blocking OTel export for VoltOps
+  setWaitUntil(after)
 
   return result.toUIMessageStreamResponse()
 }
-
-// Wrap handler with observe() to create a Langfuse trace
-export const POST = observe(handler, {
-  name: 'handle-chat-message',
-  endOnExit: false, // Don't end observation until stream finishes
-})

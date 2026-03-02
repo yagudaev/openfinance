@@ -7,11 +7,6 @@ const nextConfig: NextConfig = {
     'better-sqlite3',
     '@prisma/adapter-better-sqlite3',
     'pdf-parse',
-    '@opentelemetry/api',
-    '@opentelemetry/sdk-trace-node',
-    '@opentelemetry/sdk-trace-base',
-    '@langfuse/otel',
-    '@langfuse/tracing',
     'googleapis',
   ],
 }
