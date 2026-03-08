@@ -32,6 +32,25 @@ function formatTimestamp(date: Date): string {
   return date.toISOString().replace('T', ' ').slice(0, 19)
 }
 
+function formatStatus(finishReason: string | null): { label: string, className: string } {
+  switch (finishReason) {
+    case 'stop':
+      return { label: 'Completed', className: 'inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700' }
+    case 'tool-calls':
+      return { label: 'Tool Calls', className: 'inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700' }
+    case 'length':
+      return { label: 'Max Length', className: 'inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700' }
+    case 'content-filter':
+      return { label: 'Filtered', className: 'inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700' }
+    case 'error':
+      return { label: 'Error', className: 'inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700' }
+    case 'in-progress':
+      return { label: 'In Progress', className: 'inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700' }
+    default:
+      return { label: finishReason ?? '--', className: 'inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700' }
+  }
+}
+
 function countToolCalls(stepsJson: string): number {
   try {
     const steps = JSON.parse(stepsJson) as Array<{ toolCalls?: unknown[] }>
@@ -142,15 +161,10 @@ export default async function TracesPage() {
                         {formatLatency(trace.latencyMs)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
-                        {hasError ? (
-                          <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                            error
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                            {trace.finishReason ?? 'ok'}
-                          </span>
-                        )}
+                        {(() => {
+                          const status = formatStatus(hasError ? 'error' : trace.finishReason)
+                          return <span className={status.className}>{status.label}</span>
+                        })()}
                       </td>
                     </tr>
                   )

@@ -69,6 +69,18 @@ export async function POST(request: Request) {
 
   const startTime = Date.now()
 
+  // Create in-progress trace immediately so it shows up in the traces list
+  const inProgressTrace = await prisma.chatTrace.create({
+    data: {
+      userId: session.user.id,
+      threadId: threadId ?? null,
+      model: modelId,
+      finishReason: 'in-progress',
+      steps: '[]',
+      userMessage: userMessageText ?? null,
+    },
+  })
+
   const result = await agent.streamText(messages, {
     tools: chatTools,
     context: {
@@ -129,7 +141,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // Save trace data for debugging
+      // Update the in-progress trace with final data
       try {
         const stepsData = steps?.map((step, index) => ({
           stepNumber: index,
@@ -162,11 +174,9 @@ export async function POST(request: Request) {
           // pricing fetch failed — cost stays null
         }
 
-        const trace = await prisma.chatTrace.create({
+        await prisma.chatTrace.update({
+          where: { id: inProgressTrace.id },
           data: {
-            userId: session.user.id,
-            threadId: threadId ?? null,
-            model: modelId,
             inputTokens: totalUsage?.inputTokens ?? null,
             outputTokens: totalUsage?.outputTokens ?? null,
             totalTokens: inputTok + outputTok || null,
@@ -174,7 +184,6 @@ export async function POST(request: Request) {
             latencyMs,
             finishReason: finishReason ?? null,
             steps: JSON.stringify(stepsData),
-            userMessage: userMessageText ?? null,
             assistantText: text || null,
           },
         })
@@ -188,12 +197,12 @@ export async function POST(request: Request) {
           if (latestAssistantMessage) {
             await prisma.chatMessage.update({
               where: { id: latestAssistantMessage.id },
-              data: { traceId: trace.id },
+              data: { traceId: inProgressTrace.id },
             })
           }
         }
       } catch (error) {
-        console.error('Failed to save chat trace:', error)
+        console.error('Failed to update chat trace:', error)
       }
     },
   })
