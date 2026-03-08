@@ -1,3 +1,4 @@
+
 import { UIMessage } from 'ai'
 import { createTool, setWaitUntil } from '@voltagent/core'
 import { after } from 'next/server'
@@ -12,36 +13,6 @@ import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
 import { agent } from '@/voltagent'
 
 export const maxDuration = 120
-
-function generateTitle(text: string): string {
-  const cleaned = text.replace(/\[Attached file:.*?\]/g, '').trim()
-  if (cleaned.length <= 50) return cleaned
-  const truncated = cleaned.slice(0, 50)
-  const lastSpace = truncated.lastIndexOf(' ')
-  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...'
-}
-
-function extractTextContent(message: UIMessage): string {
-  return message.parts
-    ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-    .map(p => p.text)
-    .join('\n') ?? ''
-}
-
-/**
- * Convert AI SDK tools (from createChatTools) to VoltAgent Tool instances.
- * This is a mechanical conversion: add `name`, rename `inputSchema` to `parameters`.
- */
-function convertAiSdkTools(toolMap: Record<string, any>) {
-  return Object.entries(toolMap).map(([name, t]) =>
-    createTool({
-      name,
-      description: t.description ?? name,
-      parameters: t.inputSchema,
-      execute: t.execute,
-    }),
-  )
-}
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -211,4 +182,34 @@ export async function POST(request: Request) {
   setWaitUntil(after)
 
   return result.toUIMessageStreamResponse()
+}
+
+function generateTitle(text: string): string {
+  const cleaned = text.replace(/\[Attached file:.*?\]/g, '').trim()
+  if (cleaned.length <= 50) return cleaned
+  const truncated = cleaned.slice(0, 50)
+  const lastSpace = truncated.lastIndexOf(' ')
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...'
+}
+
+function extractTextContent(message: UIMessage): string {
+  return message.parts
+    ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map(p => p.text)
+    .join('\n') ?? ''
+}
+
+/**
+ * Convert AI SDK tools (from createChatTools) to VoltAgent Tool instances.
+ * This is a mechanical conversion: add `name`, rename `inputSchema` to `parameters`.
+ */
+function convertAiSdkTools(toolMap: Record<string, any>) {
+  return Object.entries(toolMap).map(([name, t]) =>
+    createTool({
+      name,
+      description: t.description ?? name,
+      parameters: t.inputSchema,
+      execute: t.execute,
+    }),
+  )
 }
