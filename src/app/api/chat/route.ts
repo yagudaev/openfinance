@@ -1,6 +1,6 @@
 
 import { UIMessage } from 'ai'
-import { createTool, setWaitUntil } from '@voltagent/core'
+import { setWaitUntil } from '@voltagent/core'
 import { after } from 'next/server'
 
 import { auth } from '@/lib/auth'
@@ -38,11 +38,7 @@ export async function POST(request: Request) {
     expenseCategories: expenseCategories || null,
   })
 
-  // Convert existing AI SDK tools to VoltAgent format, excluding evaluate_expression
-  // (it's already defined as a VoltAgent tool in the agent)
-  const existingTools = createChatTools(session.user.id)
-  const { evaluate_expression: _, ...toolsToConvert } = existingTools
-  const additionalTools = convertAiSdkTools(toolsToConvert)
+  const chatTools = createChatTools(session.user.id)
 
   // Save user message to DB if we have a thread
   if (threadId) {
@@ -80,7 +76,7 @@ export async function POST(request: Request) {
   const startTime = Date.now()
 
   const result = await agent.streamText(messages, {
-    tools: additionalTools,
+    tools: chatTools,
     context: {
       systemPrompt,
       modelId,
@@ -197,19 +193,4 @@ function extractTextContent(message: UIMessage): string {
     ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
     .map(p => p.text)
     .join('\n') ?? ''
-}
-
-/**
- * Convert AI SDK tools (from createChatTools) to VoltAgent Tool instances.
- * This is a mechanical conversion: add `name`, rename `inputSchema` to `parameters`.
- */
-function convertAiSdkTools(toolMap: Record<string, any>) {
-  return Object.entries(toolMap).map(([name, t]) =>
-    createTool({
-      name,
-      description: t.description ?? name,
-      parameters: t.inputSchema,
-      execute: t.execute,
-    }),
-  )
 }
