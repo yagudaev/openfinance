@@ -1,6 +1,14 @@
 import { agent } from '../agents'
 
-const MODEL_ID = process.env.EVAL_MODEL_ID ?? 'openrouter/z-ai/glm-4.7'
+const MODELS = [
+  'openrouter/z-ai/glm-4.7',
+  'openrouter/z-ai/glm-5',
+  'openrouter/anthropic/claude-sonnet-4-5',
+  'openrouter/google/gemini-3.1-pro-preview',
+  'openrouter/google/gemini-3-flash-preview',
+  'openrouter/openai/gpt-4o-mini',
+  'openrouter/openai/gpt-4o',
+]
 
 interface EvalCase {
   name: string
@@ -27,10 +35,18 @@ main().catch((error) => {
 
 async function main() {
   console.log('Running VoltAgent evals...')
-  console.log(`Model: ${MODEL_ID}`)
+  console.log(`Models: ${MODELS.length}\n`)
 
-  for (const evalCase of cases) {
-    await runEval(evalCase)
+  for (const modelId of MODELS) {
+    for (const evalCase of cases) {
+      try {
+        await runEval(modelId, evalCase)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error(`\n  ERROR [${modelId}] ${evalCase.name}: ${message}`)
+        failed++
+      }
+    }
   }
 
   console.log(`\n${passed} passed, ${failed} failed`)
@@ -43,13 +59,13 @@ async function main() {
   }
 }
 
-async function runEval(evalCase: EvalCase) {
-  console.log(`\nEval: ${evalCase.name}`)
+async function runEval(modelId: string, evalCase: EvalCase) {
+  const label = `[${modelId}] ${evalCase.name}`
+  console.log(`\nEval: ${label}`)
   console.log(`  Prompt: "${evalCase.prompt}"`)
-  console.log(`  Model: ${MODEL_ID}`)
 
   const result = await agent.generateText(evalCase.prompt, {
-    context: { modelId: MODEL_ID },
+    context: { modelId },
   })
 
   const allToolCalls = result.steps?.flatMap(step => step.toolCalls) ?? []
@@ -60,14 +76,14 @@ async function runEval(evalCase: EvalCase) {
 
   assert(
     toolNames.includes(evalCase.expectedToolName),
-    `Agent used ${evalCase.expectedToolName} (got: [${toolNames.join(', ')}])`,
+    `${label}: used ${evalCase.expectedToolName} (got: [${toolNames.join(', ')}])`,
   )
 
   if (evalCase.expectedAnswer !== undefined) {
     const hasCorrectAnswer = result.text?.includes(String(evalCase.expectedAnswer)) ?? false
     assert(
       hasCorrectAnswer,
-      `Response contains expected answer ${evalCase.expectedAnswer}`,
+      `${label}: response contains ${evalCase.expectedAnswer}`,
     )
   }
 }
