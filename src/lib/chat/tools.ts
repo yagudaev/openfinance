@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { createTool } from '@voltagent/core'
 import { z } from 'zod'
 import { readFile, stat } from 'fs/promises'
 import { extname } from 'path'
@@ -11,7 +11,6 @@ import { Prisma } from '@/generated/prisma/client'
 import {
   calculateFederalTax,
   calculateCompoundGrowth,
-  safeEvaluate,
   getRRSPInfo,
   getTFSAInfo,
 } from '@/lib/chat/finance-tools'
@@ -31,11 +30,12 @@ import type { ScenarioParams } from '@/lib/services/scenario-types'
 const pdfParse = require('pdf-parse')
 
 export function createChatTools(userId: string) {
-  return {
-    search_transactions: tool({
+  return [
+    createTool({
+      name: 'search_transactions',
       description:
         "Search the user's transaction history. Call with NO parameters to get all recent transactions. Only add filters when the user explicitly asks.",
-      inputSchema: z.object({
+      parameters: z.object({
         query: z.string().optional().describe('Search by description text. Only set if user asks to search by name.'),
         startDate: z.string().optional().describe('Start date YYYY-MM-DD. Only set if user specifies dates.'),
         endDate: z.string().optional().describe('End date YYYY-MM-DD. Only set if user specifies dates.'),
@@ -101,9 +101,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    get_account_summary: tool({
+    createTool({
+      name: 'get_account_summary',
       description: 'Get a summary of all bank accounts with latest statement balances',
-      inputSchema: z.object({}),
+      parameters: z.object({}),
       execute: async () => {
         try {
           const accounts = await prisma.bankAccount.findMany({
@@ -137,9 +138,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    get_cashflow: tool({
+    createTool({
+      name: 'get_cashflow',
       description: 'Get cashflow data (income vs expenses) for a date range',
-      inputSchema: z.object({
+      parameters: z.object({
         startDate: z.string().describe('Start date (YYYY-MM-DD format)'),
         endDate: z.string().describe('End date (YYYY-MM-DD format)'),
       }),
@@ -176,9 +178,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    get_category_breakdown: tool({
+    createTool({
+      name: 'get_category_breakdown',
       description: 'Get spending breakdown by category for a date range',
-      inputSchema: z.object({
+      parameters: z.object({
         startDate: z.string().optional().describe('Start date (YYYY-MM-DD format)'),
         endDate: z.string().optional().describe('End date (YYYY-MM-DD format)'),
       }),
@@ -218,9 +221,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    get_settings: tool({
+    createTool({
+      name: 'get_settings',
       description: 'Get the current user settings including fiscal year, timezone, AI model, and personal context',
-      inputSchema: z.object({}),
+      parameters: z.object({}),
       execute: async () => {
         try {
           const settings = await prisma.userSettings.findUnique({
@@ -258,9 +262,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    update_settings: tool({
+    createTool({
+      name: 'update_settings',
       description: 'Update user settings. Only pass the fields you want to change. Valid chat models: "openrouter/z-ai/glm-4.7", "openrouter/z-ai/glm-5", "openrouter/anthropic/claude-sonnet-4-5", "openrouter/google/gemini-2.5-pro-preview", "openrouter/google/gemini-2.5-flash-preview", "openai/gpt-4o-mini", "openai/gpt-4o". Valid processing models: "openai/gpt-4o-mini", "openai/gpt-4o". Fiscal year end month is 1-12. Timezones use IANA format (e.g. "America/Toronto").',
-      inputSchema: z.object({
+      parameters: z.object({
         fiscalYearEndMonth: z.number().min(1).max(12).optional().describe('Fiscal year end month (1=January, 12=December)'),
         fiscalYearEndDay: z.number().min(1).max(31).optional().describe('Fiscal year end day'),
         bankTimezone: z.string().optional().describe('Bank timezone in IANA format (e.g. America/Vancouver)'),
@@ -344,9 +349,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    calculate_tax: tool({
+    createTool({
+      name: 'calculate_tax',
       description: 'Calculate Canadian federal income tax for a given annual income. Returns tax brackets, total tax, effective and marginal rates.',
-      inputSchema: z.object({
+      parameters: z.object({
         income: z.number().describe('Annual income in CAD'),
       }),
       execute: async ({ income }) => {
@@ -361,9 +367,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    calculate_compound_growth: tool({
+    createTool({
+      name: 'calculate_compound_growth',
       description: 'Calculate compound investment growth over time. Returns year-by-year projections with contributions and growth.',
-      inputSchema: z.object({
+      parameters: z.object({
         principal: z.number().describe('Initial investment amount'),
         monthlyContribution: z.number().describe('Monthly contribution amount'),
         annualRate: z.number().describe('Expected annual return rate as decimal (e.g., 0.07 for 7%)'),
@@ -374,9 +381,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    calculate_rrsp: tool({
+    createTool({
+      name: 'calculate_rrsp',
       description: 'Get RRSP contribution information for a given income level. Returns contribution room, estimated tax refund, and marginal rate.',
-      inputSchema: z.object({
+      parameters: z.object({
         income: z.number().describe('Annual earned income in CAD'),
       }),
       execute: async ({ income }) => {
@@ -384,28 +392,20 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    calculate_tfsa: tool({
+    createTool({
+      name: 'calculate_tfsa',
       description: 'Get TFSA contribution limit and tax-free growth information.',
-      inputSchema: z.object({}),
+      parameters: z.object({}),
       execute: async () => {
         return getTFSAInfo()
       },
     }),
 
-    evaluate_expression: tool({
-      description: 'Safely evaluate a mathematical expression using mathjs. Use for custom calculations that don\'t fit other tools.',
-      inputSchema: z.object({
-        expression: z.string().describe('Mathematical expression to evaluate (e.g., "50000 * 0.18", "compound interest formula")'),
-      }),
-      execute: async ({ expression }) => {
-        return safeEvaluate(expression)
-      },
-    }),
-
-    save_memory: tool({
+    createTool({
+      name: 'save_memory',
       description:
         'Save an important fact about the user for future conversations. Use this proactively when the user shares financial details, goals, preferences, or personal context.',
-      inputSchema: z.object({
+      parameters: z.object({
         key: z.string().describe('Short identifier for this memory (e.g. "annual_income", "filing_status")'),
         value: z.string().describe('The fact to remember (e.g. "User earns $120k/year as a freelance developer")'),
         category: z.enum([
@@ -432,10 +432,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    recall_memory: tool({
+    createTool({
+      name: 'recall_memory',
       description:
         'Retrieve saved memories about the user. Call with no parameters to get all memories, or filter by category.',
-      inputSchema: z.object({
+      parameters: z.object({
         category: z.enum([
           'financial_situation',
           'goals',
@@ -475,10 +476,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    search_memory: tool({
+    createTool({
+      name: 'search_memory',
       description:
         'Search saved memories by keyword. Searches across both keys and values. Use this when you need to find a specific memory but don\'t know its exact key or category.',
-      inputSchema: z.object({
+      parameters: z.object({
         query: z.string().describe('Keyword to search for across memory keys and values (case-insensitive)'),
       }),
       execute: async ({ query }) => {
@@ -509,10 +511,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    delete_memory: tool({
+    createTool({
+      name: 'delete_memory',
       description:
         'Delete a specific saved memory by its key. Use this when the user asks to forget something or when information is no longer accurate.',
-      inputSchema: z.object({
+      parameters: z.object({
         key: z.string().describe('The key of the memory to delete'),
       }),
       execute: async ({ key }) => {
@@ -529,10 +532,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    read_file: tool({
+    createTool({
+      name: 'read_file',
       description:
         'Read the contents of an uploaded file. Use this to read text files (markdown, CSV, TXT), extract text from PDFs, or examine file contents before deciding how to process them. For bank statement PDFs, prefer using process_statements instead.',
-      inputSchema: z.object({
+      parameters: z.object({
         filePath: z.string().describe(
           'File path relative to data/uploads/ (from the [Attached file: name (path)] reference, e.g. "userId/timestamp_file.pdf")',
         ),
@@ -604,10 +608,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    process_statements: tool({
+    createTool({
+      name: 'process_statements',
       description:
         'Process one or more uploaded bank statement PDF files. Extracts transactions from the PDFs using AI, saves them to the database, and categorizes them. Use this when the user uploads PDF files and asks to process their bank statements, import transactions, or mentions uploaded statement files. The filePaths should come from [Attached file: ...] references in the user message.',
-      inputSchema: z.object({
+      parameters: z.object({
         filePaths: z.array(z.string()).describe(
           'Array of file paths relative to data/uploads/ (e.g. "userId/timestamp_file.pdf"). These come from the [Attached file: name (path)] references in the user message.',
         ),
@@ -720,10 +725,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    run_scenario: tool({
+    createTool({
+      name: 'run_scenario',
       description:
         'Run a financial what-if scenario and save the projection. Scenario types: debt_payoff (avalanche/snowball/custom strategy), savings (goal tracking), investment (compound growth), purchase (major purchase impact), income (raise/job change), expense (reduction impact), retirement (FIRE/target date). Use the user\'s actual financial data when available — call get_account_summary or recall_memory first. Returns a summary with projected net worth over time. The scenario is saved so the user can view it on the Scenarios page.',
-      inputSchema: z.object({
+      parameters: z.object({
         title: z.string().describe('Short descriptive title for this scenario'),
         description: z.string().optional().describe('Optional longer description'),
         type: z.enum([
@@ -769,9 +775,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    list_scenarios: tool({
+    createTool({
+      name: 'list_scenarios',
       description: 'List all saved financial scenarios for the user. Shows title, type, and projected outcome for each.',
-      inputSchema: z.object({}),
+      parameters: z.object({}),
       execute: async () => {
         try {
           const scenarios = await getScenarios(userId)
@@ -807,9 +814,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    compare_scenarios: tool({
+    createTool({
+      name: 'compare_scenarios',
       description: 'Compare 2-3 saved scenarios side by side. Returns projection data for overlaying on a chart. Call list_scenarios first to get scenario IDs.',
-      inputSchema: z.object({
+      parameters: z.object({
         scenarioIds: z.array(z.string()).min(2).max(3).describe('Array of 2-3 scenario IDs to compare'),
       }),
       execute: async ({ scenarioIds }) => {
@@ -844,9 +852,10 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    delete_scenario: tool({
+    createTool({
+      name: 'delete_scenario',
       description: 'Delete a saved scenario by ID. Call list_scenarios first to find the scenario ID.',
-      inputSchema: z.object({
+      parameters: z.object({
         scenarioId: z.string().describe('ID of the scenario to delete'),
       }),
       execute: async ({ scenarioId }) => {
@@ -863,10 +872,11 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    search_web: tool({
+    createTool({
+      name: 'search_web',
       description:
         'Search the web for current financial information using Exa AI search. Use this for questions about current tax rates, TFSA/RRSP limits, CRA rules, interest rates, mortgage rates, GIC rates, stock/ETF info, financial regulations, policy changes, and investment strategies. Only use when the user asks about something that requires up-to-date information — do NOT use for questions answerable from the user\'s own data.',
-      inputSchema: z.object({
+      parameters: z.object({
         query: z.string().describe(
           'Search query. Be specific and include relevant context (e.g. "2025 TFSA contribution limit Canada" instead of just "TFSA limit").',
         ),
@@ -913,7 +923,8 @@ export function createChatTools(userId: string) {
       },
     }),
 
-    render_chart: tool({
+    createTool({
+      name: 'render_chart',
       description:
         'Render an interactive chart inline in the chat. Use this AFTER gathering data with other tools (search_transactions, get_category_breakdown, get_cashflow, recall_memory, etc.). ' +
         'The chart will be displayed visually to the user with clickable data points. ' +
@@ -921,7 +932,7 @@ export function createChatTools(userId: string) {
         'Each data point can have a `link` (URL to a filtered app page) and a `source` (where the data came from). ' +
         'ALWAYS include source information so the user can verify every number. ' +
         'For category breakdowns, link to /expenses?category=CategoryName. For date-based data, link to /transactions?startDate=X&endDate=Y.',
-      inputSchema: z.object({
+      parameters: z.object({
         title: z.string().describe('Chart title shown above the chart'),
         chartType: z.enum(['line', 'bar', 'pie', 'area', 'stacked_bar']).describe('Type of chart to render'),
         data: z.array(z.object({
@@ -955,5 +966,5 @@ export function createChatTools(userId: string) {
         }
       },
     }),
-  }
+  ]
 }
