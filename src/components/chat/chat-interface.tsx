@@ -827,7 +827,7 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
               </div>
             </div>
           ) : (
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 px-6 py-4 md:px-8">
               {messages.map(message => (
                 <div
                   key={message.id}
