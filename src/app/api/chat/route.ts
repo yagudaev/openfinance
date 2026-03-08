@@ -6,7 +6,6 @@ import { after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
@@ -31,12 +30,6 @@ export async function POST(request: Request) {
   const isNewUser = !settings?.aiContext
   const memories = await loadMemoriesForPrompt(session.user.id)
   const expenseCategories = await getCategoriesForClassifier(session.user.id)
-  const systemPrompt = buildSystemPrompt({
-    userContext: settings?.aiContext,
-    memories,
-    isNewUser,
-    expenseCategories: expenseCategories || null,
-  })
 
   const chatTools = createChatTools(session.user.id)
 
@@ -78,7 +71,10 @@ export async function POST(request: Request) {
   const result = await agent.streamText(messages, {
     tools: chatTools,
     context: {
-      systemPrompt,
+      userContext: settings?.aiContext,
+      memories,
+      isNewUser,
+      expenseCategories: expenseCategories || null,
       modelId,
     },
     onFinish: async (finishResult: {
