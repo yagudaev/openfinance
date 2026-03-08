@@ -5,18 +5,6 @@ import { z } from 'zod'
 
 import { safeEvaluate } from '@/lib/chat/finance-tools'
 
-function getModel(modelId: string) {
-  if (modelId.startsWith('openrouter/')) {
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY,
-    })
-    return openrouter(modelId.replace('openrouter/', ''))
-  }
-
-  const openaiModelId = modelId.replace('openai/', '')
-  return openai(openaiModelId)
-}
-
 export const evaluateExpressionTool = createTool({
   name: 'evaluate_expression',
   description:
@@ -101,3 +89,15 @@ export const agent = new Agent({
   tools: [evaluateExpressionTool, predictInvestmentGrowthTool],
   maxSteps: 5,
 })
+
+function getModel(modelId: string) {
+  if (modelId.startsWith('openrouter/')) {
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })
+    return openrouter(modelId.replace('openrouter/', ''))
+  }
+
+  const openaiModelId = modelId.replace('openai/', '')
+  return openai(openaiModelId)
+}
