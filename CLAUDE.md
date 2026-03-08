@@ -39,6 +39,7 @@ openfinance/
 
 ```bash
 yarn dev                  # Run dev server (turbopack)
+yarn dev:volt             # Run VoltOps debug server (port 3141)
 yarn build                # Production build
 yarn lint                 # Lint
 yarn db:migrate           # Create & apply migrations (dev)
@@ -46,7 +47,12 @@ yarn db:migrate:deploy    # Apply pending migrations (prod)
 yarn db:push              # Push schema directly (no migration history)
 yarn db:studio            # Open Prisma Studio
 yarn db:generate          # Generate Prisma client
+yarn test:volt            # Run VoltAgent tool tests
 ```
+
+## Script Naming
+
+Use `<action>:<target>` format for package.json scripts (e.g., `dev:volt`, `test:agent`, `db:migrate`). This groups scripts by action when sorted alphabetically and is consistent with the existing `db:*` convention. Never use `<target>:<action>` (e.g., ~~`agent:test`~~, ~~`voltagent:dev`~~).
 
 ## Code Style
 
@@ -56,7 +62,7 @@ yarn db:generate          # Generate Prisma client
 - `interface` for object shapes, `type` for unions/aliases
 - Clean Code: meaningful names over comments
 - Import order: builtin → external → internal → relative (with blank lines between groups)
-- Top-to-bottom reading order: exports first, helpers below
+- Top-to-bottom reading order: exported/public functions first, then private helpers. The reader should see *what the file does* before *how it does it*. This applies to all files — route handlers, components, utilities
 - See `docs/CODE_STYLE.md` for full details
 
 ## Ticket Workflow

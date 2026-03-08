@@ -27,7 +27,6 @@ import {
   Trash2,
   BookOpen,
   PanelLeftOpen,
-  Bug,
   AlertTriangle,
   XCircle,
   Link,
@@ -63,6 +62,7 @@ const TOOL_DISPLAY_INFO: Record<string, { label: string; icon: typeof Wrench }> 
   process_statements: { label: 'Processing bank statements...', icon: FileText },
   search_web: { label: 'Searching the web...', icon: Globe },
   render_chart: { label: 'Rendering chart', icon: PieChart },
+  predict_investment_growth: { label: 'Projecting investment growth', icon: TrendingUp },
 }
 
 function getToolDisplay(toolName: string | undefined) {
@@ -236,6 +236,10 @@ function formatToolSummary(toolName: string | undefined, output: unknown): strin
     case 'render_chart': {
       const chart = data.chart as { title?: string; chartType?: string } | undefined
       return chart?.title ? `Chart: ${chart.title}` : 'Chart rendered'
+    }
+    case 'predict_investment_growth': {
+      const chart = data.chart as { title?: string } | undefined
+      return chart?.title ? `Chart: ${chart.title}` : 'Growth projection complete'
     }
     default:
       return 'Completed'
@@ -511,7 +515,8 @@ interface ChatInterfaceProps {
 export function ChatInterface({ threadId, initialMessages = [], initialTraceIds = {}, isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
   const router = useRouter()
-  const [traceIds] = useState<Record<string, string>>(initialTraceIds)
+  // traceIds preserved for future VoltOps integration
+  const [_traceIds] = useState<Record<string, string>>(initialTraceIds)
   const [input, setInput] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -842,8 +847,8 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                           }
                           const toolName = toolPart.toolName ?? toolPart.type.replace(/^tool-/, '')
 
-                          // Render interactive chart for render_chart tool results
-                          if (toolName === 'render_chart' && toolPart.state === 'output-available' && toolPart.output) {
+                          // Render interactive chart for render_chart and predict_investment_growth tool results
+                          if ((toolName === 'render_chart' || toolName === 'predict_investment_growth') && toolPart.state === 'output-available' && toolPart.output) {
                             const output = toolPart.output as { chart?: {
                               title: string
                               chartType: 'line' | 'bar' | 'pie' | 'area' | 'stacked_bar'
@@ -879,19 +884,6 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                         return null
                       })}
                     </div>
-                    {message.role === 'assistant' && traceIds[message.id] && (
-                      <div className="mt-1">
-                        <a
-                          href={`https://langfuse.openfinance.to/trace/${traceIds[message.id]}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="View trace in Langfuse"
-                          className="inline-flex items-center text-gray-400 transition-colors hover:text-gray-600"
-                        >
-                          <Bug className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
-                    )}
                   </div>
                   {message.role === 'user' && (
                     <UserAvatar

@@ -32,6 +32,7 @@ Today is ${today}. Use this to interpret relative date references like "last mon
 - **calculate_rrsp**: Get RRSP contribution room and estimated tax refund for an income level
 - **calculate_tfsa**: Get TFSA annual contribution limit info
 - **evaluate_expression**: Safely evaluate mathematical expressions for custom calculations
+- **predict_investment_growth**: Project investment growth over time with compound interest. Returns an interactive chart showing year-by-year portfolio value. Use when the user asks about investment projections or "what if I invest X".
 - **save_memory**: Save important facts about the user for future conversations (financial details, goals, preferences, tax info)
 - **recall_memory**: Retrieve saved memories about the user, optionally filtered by category
 - **search_memory**: Search saved memories by keyword across both keys and values — use when looking for a specific topic
