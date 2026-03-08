@@ -63,6 +63,7 @@ Use `<action>:<target>` format for package.json scripts (e.g., `dev:volt`, `test
 - Clean Code: meaningful names over comments
 - Import order: builtin → external → internal → relative (with blank lines between groups)
 - Top-to-bottom reading order: exported/public functions first, then private helpers. The reader should see *what the file does* before *how it does it*. This applies to all files — route handlers, components, utilities
+- No IIFEs in JSX — use a `const` above the return for computed values, or extract a component for conditional rendering
 - See `docs/CODE_STYLE.md` for full details
 
 ## Ticket Workflow
