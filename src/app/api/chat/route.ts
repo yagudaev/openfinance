@@ -157,7 +157,7 @@ export async function POST(request: Request) {
           },
         })) ?? []
 
-        await prisma.chatTrace.create({
+        const trace = await prisma.chatTrace.create({
           data: {
             userId: session.user.id,
             threadId: threadId ?? null,
@@ -172,6 +172,20 @@ export async function POST(request: Request) {
             assistantText: text || null,
           },
         })
+
+        // Link the trace to the most recent assistant message in this thread
+        if (threadId) {
+          const latestAssistantMessage = await prisma.chatMessage.findFirst({
+            where: { threadId, role: 'assistant' },
+            orderBy: { createdAt: 'desc' },
+          })
+          if (latestAssistantMessage) {
+            await prisma.chatMessage.update({
+              where: { id: latestAssistantMessage.id },
+              data: { traceId: trace.id },
+            })
+          }
+        }
       } catch (error) {
         console.error('Failed to save chat trace:', error)
       }

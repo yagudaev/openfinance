@@ -515,8 +515,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ threadId, initialMessages = [], initialTraceIds = {}, isNewUser = false }: ChatInterfaceProps) {
   const { data: session } = useSession()
   const router = useRouter()
-  // traceIds preserved for future VoltOps integration
-  const [_traceIds] = useState<Record<string, string>>(initialTraceIds)
+  const [traceIds, setTraceIds] = useState<Record<string, string>>(initialTraceIds)
   const [input, setInput] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -561,6 +560,28 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
     if (!isLoading && messages.length > 0) {
       inputRef.current?.focus()
     }
+  }, [isLoading, messages.length])
+
+  // Fetch updated trace IDs after streaming completes
+  const prevLoadingRef = useRef(false)
+  useEffect(() => {
+    if (prevLoadingRef.current && !isLoading && messages.length > 0) {
+      fetch(`/api/chat/threads/${threadIdRef.current}/messages`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.messages) {
+            const newTraceIds: Record<string, string> = {}
+            for (const m of data.messages) {
+              if (m.traceId) {
+                newTraceIds[m.id] = m.traceId
+              }
+            }
+            setTraceIds(prev => ({ ...prev, ...newTraceIds }))
+          }
+        })
+        .catch(() => { /* ignore fetch errors */ })
+    }
+    prevLoadingRef.current = isLoading
   }, [isLoading, messages.length])
 
   // Auto-send queued message when AI finishes responding
@@ -884,6 +905,20 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                         return null
                       })}
                     </div>
+                    {message.role === 'assistant' && traceIds[message.id] && (
+                      <div className="mt-1">
+                        <a
+                          href={`/admin/traces/${traceIds[message.id]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View trace"
+                          className="inline-flex items-center gap-1 text-[11px] text-gray-400 transition-colors hover:text-violet-600"
+                        >
+                          <Search className="h-3 w-3" />
+                          <span>Trace</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                   {message.role === 'user' && (
                     <UserAvatar

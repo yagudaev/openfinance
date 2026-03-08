@@ -282,7 +282,7 @@ model ChatMessage {
   toolCalls  String?
   toolCallId String?
   model      String?
-  traceId    String?  // Langfuse trace ID for debugging
+  traceId    String?  // ChatTrace ID for debugging
   createdAt  DateTime @default(now())
 
   @@index([threadId])
