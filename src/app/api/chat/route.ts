@@ -32,7 +32,6 @@ function extractTextContent(message: UIMessage): string {
  * Convert AI SDK tools (from createChatTools) to VoltAgent Tool instances.
  * This is a mechanical conversion: add `name`, rename `inputSchema` to `parameters`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertAiSdkTools(toolMap: Record<string, any>) {
   return Object.entries(toolMap).map(([name, t]) =>
     createTool({

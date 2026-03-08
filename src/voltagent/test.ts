@@ -16,29 +16,23 @@ function assert(condition: boolean, message: string) {
 async function testEvaluateExpression() {
   console.log('\nTest 1: evaluate_expression tool')
 
-  const result = await evaluateExpressionTool.execute(
+  const result = await evaluateExpressionTool.execute!(
     { expression: '1500 * 12 + 500' },
     { operationId: 'test', agentId: 'test' } as never,
   )
 
   assert(result !== null && result !== undefined, 'Result is not null')
-  assert(
-    typeof result === 'object' && 'result' in result,
-    'Result has "result" property',
-  )
 
-  const value = (result as { result: number }).result
-  assert(value === 18500, `Result is 18500 (got ${value})`)
-  assert(
-    !('error' in result && (result as { error?: string }).error),
-    'No error in result',
-  )
+  const typed = result as { result: number, error?: string }
+  assert('result' in typed, 'Result has "result" property')
+  assert(typed.result === 18500, `Result is 18500 (got ${typed.result})`)
+  assert(!typed.error, 'No error in result')
 }
 
 async function testPredictInvestmentGrowth() {
   console.log('\nTest 2: predict_investment_growth tool')
 
-  const result = await predictInvestmentGrowthTool.execute(
+  const result = await predictInvestmentGrowthTool.execute!(
     {
       ticker: 'SPY',
       initial_investment: 10000,
@@ -49,12 +43,11 @@ async function testPredictInvestmentGrowth() {
   )
 
   assert(result !== null && result !== undefined, 'Result is not null')
-  assert(
-    typeof result === 'object' && 'chart' in result,
-    'Result has "chart" property',
-  )
 
-  const chart = (result as { chart: { title: string; data: Array<{ label: string; value: number }> } }).chart
+  const typed = result as { chart: { title: string; data: Array<{ label: string; value: number }> } }
+  assert('chart' in typed, 'Result has "chart" property')
+
+  const chart = typed.chart
   assert(chart.title === 'SPY Growth Projection', `Title is "SPY Growth Projection" (got "${chart.title}")`)
   assert(Array.isArray(chart.data), 'Data is an array')
   assert(
