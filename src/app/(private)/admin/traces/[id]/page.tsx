@@ -4,6 +4,9 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+import { formatLatency } from '@/lib/trace-utils'
+import { TraceStatus } from '@/components/trace-status'
+
 interface StepData {
   stepNumber: number
   text?: string
@@ -25,12 +28,6 @@ interface StepData {
 
 interface Props {
   params: Promise<{ id: string }>
-}
-
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '--'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
 }
 
 function formatJson(value: unknown): string {
@@ -91,8 +88,10 @@ export default async function TraceDetailPage({ params }: Props) {
             <dd className="mt-1 font-mono text-sm text-gray-900">{formatLatency(trace.latencyMs)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-gray-500">Finish Reason</dt>
-            <dd className="mt-1 font-mono text-sm text-gray-900">{trace.finishReason ?? '--'}</dd>
+            <dt className="text-xs text-gray-500">Status</dt>
+            <dd className="mt-1">
+              <TraceStatus status={trace.error ? 'error' : trace.finishReason} />
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-gray-500">Time</dt>
@@ -154,15 +153,7 @@ export default async function TraceDetailPage({ params }: Props) {
                 <span className="font-mono">
                   {step.usage.inputTokens ?? 0}in / {step.usage.outputTokens ?? 0}out
                 </span>
-                <span className={
-                  step.finishReason === 'stop'
-                    ? 'inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700'
-                    : step.finishReason === 'tool-calls'
-                      ? 'inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700'
-                      : 'inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700'
-                }>
-                  {step.finishReason}
-                </span>
+                <TraceStatus status={step.finishReason} />
               </div>
             </div>
 

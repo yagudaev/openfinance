@@ -4,11 +4,8 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '--'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
+import { formatLatency } from '@/lib/trace-utils'
+import { TraceStatus } from '@/components/trace-status'
 
 function formatTokens(tokens: number | null): string {
   if (tokens === null) return '--'
@@ -142,15 +139,7 @@ export default async function TracesPage() {
                         {formatLatency(trace.latencyMs)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
-                        {hasError ? (
-                          <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                            error
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                            {trace.finishReason ?? 'ok'}
-                          </span>
-                        )}
+                        <TraceStatus status={hasError ? 'error' : trace.finishReason} />
                       </td>
                     </tr>
                   )
