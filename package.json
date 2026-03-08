@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:volt": "tsx --env-file=.env ./src/voltagent/server.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -15,8 +16,7 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:prod": "BASE_URL=https://openfinance.to playwright test e2e/production.spec.ts",
-    "voltagent:dev": "tsx --env-file=.env ./src/voltagent/server.ts",
-    "agent:test": "tsx ./src/voltagent/test.ts"
+    "test:volt": "tsx ./src/voltagent/test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.30",
