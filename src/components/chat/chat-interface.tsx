@@ -1,7 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, UIMessage } from 'ai'
+import { DefaultChatTransport, FileUIPart, UIMessage } from 'ai'
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -526,6 +526,7 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
   const threadIdRef = useRef(threadId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounterRef = useRef(0)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     threadIdRef.current = threadId
@@ -621,31 +622,56 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
     if (queuedMessage) return
 
     let messageText = input.trim()
+    let fileParts: FileUIPart[] | undefined
 
     if (attachedFile) {
-      setIsUploading(true)
-      const result = await uploadFile(attachedFile)
-      setIsUploading(false)
+      const isImage = attachedFile.type.startsWith('image/')
 
-      if (result) {
-        const fileRef = `[Attached file: ${result.fileName} (${result.filePath})]`
-        messageText = messageText ? `${messageText}\n\n${fileRef}` : fileRef
+      if (isImage) {
+        // Send images inline as data URLs for AI vision
+        const dataUrl = await fileToDataUrl(attachedFile)
+        fileParts = [{
+          type: 'file',
+          mediaType: attachedFile.type,
+          filename: attachedFile.name,
+          url: dataUrl,
+        }]
       } else {
-        // Upload failed — don't send the message
-        return
+        // Upload non-image files to server
+        setIsUploading(true)
+        const result = await uploadFile(attachedFile)
+        setIsUploading(false)
+
+        if (result) {
+          const fileRef = `[Attached file: ${result.fileName} (${result.filePath})]`
+          messageText = messageText ? `${messageText}\n\n${fileRef}` : fileRef
+        } else {
+          // Upload failed — don't send the message
+          return
+        }
       }
     }
 
-    if (!messageText) return
+    if (!messageText && !fileParts) return
 
     if (isLoading) {
       // Queue the message to send after current response completes
-      setQueuedMessage(messageText)
+      // Note: queued messages don't support file attachments
+      if (messageText) {
+        setQueuedMessage(messageText)
+      }
     } else {
-      sendMessage({ text: messageText })
+      sendMessage({
+        text: messageText || 'What do you see in this image?',
+        files: fileParts,
+      })
     }
     setInput('')
     setAttachedFile(null)
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl)
+      setImagePreviewUrl(null)
+    }
   }
 
   function handleStop() {
@@ -677,10 +703,22 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
     }
   }
 
+  function attachFile(file: File) {
+    setAttachedFile(file)
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl)
+    }
+    if (file.type.startsWith('image/')) {
+      setImagePreviewUrl(URL.createObjectURL(file))
+    } else {
+      setImagePreviewUrl(null)
+    }
+  }
+
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
-      setAttachedFile(file)
+      attachFile(file)
     }
     // Reset input so the same file can be re-selected
     e.target.value = ''
@@ -688,6 +726,10 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
 
   function handleRemoveFile() {
     setAttachedFile(null)
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl)
+      setImagePreviewUrl(null)
+    }
   }
 
   function handleAttachClick() {
@@ -726,9 +768,28 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
 
     const file = e.dataTransfer.files?.[0]
     if (file) {
-      setAttachedFile(file)
+      attachFile(file)
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagePreviewUrl])
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          attachFile(file)
+        }
+        return
+      }
+    }
+  }
+
+  const isImageAttachment = attachedFile?.type.startsWith('image/') ?? false
 
   return (
     <div className="flex h-[calc(100vh-8rem)]">
@@ -855,6 +916,25 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
                             </div>
                           )
                         }
+                        if (part.type === 'file') {
+                          const filePart = part as FileUIPart
+                          if (filePart.mediaType.startsWith('image/')) {
+                            return (
+                              <img
+                                key={i}
+                                src={filePart.url}
+                                alt={filePart.filename ?? 'Attached image'}
+                                className="max-h-48 max-w-full rounded-md"
+                              />
+                            )
+                          }
+                          return (
+                            <div key={i} className="flex items-center gap-1.5 text-xs opacity-75">
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>{filePart.filename ?? 'Attached file'}</span>
+                            </div>
+                          )
+                        }
                         if (part.type?.startsWith('tool-') || part.type === 'dynamic-tool') {
                           const toolPart = part as {
                             type: string
@@ -963,17 +1043,34 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
           {/* Attached file chip */}
           {attachedFile && (
             <div className="mb-2 flex items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
-                <FileText className="h-3.5 w-3.5 text-gray-500" />
-                <span className="max-w-48 truncate">{attachedFile.name}</span>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="ml-0.5 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              {isImageAttachment && imagePreviewUrl ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Pasted image preview"
+                    className="max-h-24 max-w-48 rounded-md border border-gray-200 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-gray-700 p-0.5 text-white shadow-sm transition-colors hover:bg-gray-900"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
+                  <FileText className="h-3.5 w-3.5 text-gray-500" />
+                  <span className="max-w-48 truncate">{attachedFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="ml-0.5 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -998,6 +1095,7 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
+              onPaste={handlePaste}
               placeholder={isLoading ? 'Type to queue a follow-up...' : 'Ask about your finances...'}
               disabled={!!queuedMessage}
               className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-violet-300 focus:ring-1 focus:ring-violet-300 disabled:opacity-50"
@@ -1044,4 +1142,13 @@ export function ChatInterface({ threadId, initialMessages = [], initialTraceIds 
       </div>
     </div>
   )
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
