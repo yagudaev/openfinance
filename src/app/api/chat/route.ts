@@ -8,6 +8,7 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
+import { replaceImagePartsWithDescriptions } from '@/lib/chat/vision'
 import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
 import { agent } from '@/voltagent'
 import { fetchPricing, calculateCost } from '@/lib/pricing'
@@ -81,7 +82,13 @@ export async function POST(request: Request) {
     },
   })
 
-  const result = await agent.streamText(messages, {
+  // Replace image parts with text descriptions from vision model
+  // so text-only chat models (GLM-4.7) can understand image content
+  const processingModel = settings?.processingModel ?? 'openai/gpt-4o-mini'
+  const visionModel = processingModel.replace('openai/', '')
+  const processedMessages = await replaceImagePartsWithDescriptions(messages, visionModel)
+
+  const result = await agent.streamText(processedMessages, {
     tools: chatTools,
     context: {
       userContext: settings?.aiContext,
