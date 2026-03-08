@@ -111,6 +111,11 @@ Multiple tickets can run in parallel using separate worktrees. When branches tou
 4. If your change replaces legacy code, DELETE the old code. No dead code.
 5. This is a production app — no experiments unless explicitly told otherwise
 
+## Before Pushing / Creating a PR
+Review the full diff (`git diff main...HEAD`) and check for:
+- Any function, constant, or type that appears in more than one file — extract to a shared module
+- Any existing duplication in touched files that should be consolidated while you're there
+
 ## Definition of Done (every ticket)
 A ticket is NOT done until ALL of these pass:
 - [ ] `yarn build` succeeds
