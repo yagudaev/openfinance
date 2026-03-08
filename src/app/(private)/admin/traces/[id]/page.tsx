@@ -4,7 +4,8 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
-import { formatLatency, formatStatus } from '@/lib/trace-utils'
+import { formatLatency } from '@/lib/trace-utils'
+import { TraceStatus } from '@/components/trace-status'
 
 interface StepData {
   stepNumber: number
@@ -89,10 +90,7 @@ export default async function TraceDetailPage({ params }: Props) {
           <div>
             <dt className="text-xs text-gray-500">Status</dt>
             <dd className="mt-1">
-              {(() => {
-                const status = formatStatus(trace.error ? 'error' : trace.finishReason)
-                return <span className={status.className}>{status.label}</span>
-              })()}
+              <TraceStatus status={trace.error ? 'error' : trace.finishReason} />
             </dd>
           </div>
           <div>
@@ -155,10 +153,7 @@ export default async function TraceDetailPage({ params }: Props) {
                 <span className="font-mono">
                   {step.usage.inputTokens ?? 0}in / {step.usage.outputTokens ?? 0}out
                 </span>
-                {(() => {
-                  const status = formatStatus(step.finishReason)
-                  return <span className={status.className}>{status.label}</span>
-                })()}
+                <TraceStatus status={step.finishReason} />
               </div>
             </div>
 
