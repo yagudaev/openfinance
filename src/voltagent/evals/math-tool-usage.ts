@@ -35,12 +35,15 @@ main().catch((error) => {
 
 async function main() {
   console.log('Running VoltAgent evals...')
-  console.log(`Models: ${MODELS.length}\n`)
+  console.log(`Models: ${MODELS.length}`)
+
+  const pricing = await fetchPricing()
+  console.log(`Pricing: ${Object.keys(pricing).length} models loaded\n`)
 
   for (const modelId of MODELS) {
     for (const evalCase of cases) {
       try {
-        await runEval(modelId, evalCase)
+        await runEval(modelId, evalCase, pricing)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         console.error(`\n  ERROR [${modelId}] ${evalCase.name}: ${message}`)
@@ -50,6 +53,7 @@ async function main() {
   }
 
   console.log(`\n${passed} passed, ${failed} failed`)
+  console.log(`Total cost: $${totalCost.toFixed(4)}`)
 
   if (failed > 0) {
     process.exit(1)
@@ -59,7 +63,11 @@ async function main() {
   }
 }
 
-async function runEval(modelId: string, evalCase: EvalCase) {
+async function runEval(
+  modelId: string,
+  evalCase: EvalCase,
+  pricing: Record<string, { prompt: number, completion: number }>,
+) {
   const label = `[${modelId}] ${evalCase.name}`
   console.log(`\nEval: ${label}`)
   console.log(`  Prompt: "${evalCase.prompt}"`)
@@ -71,7 +79,18 @@ async function runEval(modelId: string, evalCase: EvalCase) {
   const allToolCalls = result.steps?.flatMap(step => step.toolCalls) ?? []
   const toolNames = allToolCalls.map(tc => tc.toolName)
 
+  const usage = result.usage
+  const inputTokens = usage?.inputTokens ?? 0
+  const outputTokens = usage?.outputTokens ?? 0
+  const orModelId = modelId.replace('openrouter/', '')
+  const price = pricing[orModelId]
+  const cost = price
+    ? inputTokens * price.prompt + outputTokens * price.completion
+    : 0
+  totalCost += cost
+
   console.log(`  Tool calls: ${toolNames.length > 0 ? toolNames.join(', ') : '(none)'}`)
+  console.log(`  Tokens: ${inputTokens} in / ${outputTokens} out — $${cost.toFixed(4)}`)
   console.log(`  Response: ${result.text?.slice(0, 120)}...`)
 
   assert(
@@ -88,10 +107,33 @@ async function runEval(modelId: string, evalCase: EvalCase) {
   }
 }
 
-// --- test helpers ---
+// --- helpers ---
+
+async function fetchPricing(): Promise<Record<string, { prompt: number, completion: number }>> {
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/models')
+    const data = await res.json() as {
+      data: Array<{ id: string, pricing?: { prompt?: string, completion?: string } }>
+    }
+    const pricing: Record<string, { prompt: number, completion: number }> = {}
+    for (const model of data.data) {
+      if (model.pricing?.prompt && model.pricing?.completion) {
+        pricing[model.id] = {
+          prompt: parseFloat(model.pricing.prompt),
+          completion: parseFloat(model.pricing.completion),
+        }
+      }
+    }
+    return pricing
+  } catch {
+    console.warn('  Could not fetch pricing from OpenRouter, costs will show as $0')
+    return {}
+  }
+}
 
 let passed = 0
 let failed = 0
+let totalCost = 0
 
 function assert(condition: boolean, message: string) {
   if (condition) {
