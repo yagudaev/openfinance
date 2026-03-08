@@ -4,13 +4,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
-import { formatStatus } from '@/lib/trace-utils'
-
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '--'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
+import { formatLatency, formatStatus } from '@/lib/trace-utils'
 
 function formatTokens(tokens: number | null): string {
   if (tokens === null) return '--'
