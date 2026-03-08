@@ -2,8 +2,6 @@
 
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { revalidatePath } from 'next/cache'
-
 import { encrypt } from '@/lib/encryption'
 import { prisma } from '@/lib/prisma'
 import { recalculateNetWorth } from '@/lib/services/daily-net-worth'
@@ -133,9 +131,8 @@ export async function deleteAccount(accountId: string) {
 
   await recalculateNetWorth(session.user.id)
 
-  // Skip revalidatePath('/settings') — client handles optimistic state update
-  // to avoid scroll position reset
-  revalidatePath('/net-worth')
-  revalidatePath('/dashboard')
+  // Skip ALL revalidatePath calls here — client handles optimistic state update
+  // to avoid scroll position reset. Dashboard and net-worth pages will get fresh
+  // data on next navigation since their server components re-execute each visit.
   return { success: true }
 }
