@@ -16,6 +16,12 @@ function formatTokens(tokens: number | null): string {
   return String(tokens)
 }
 
+function formatCost(cost: number | null | undefined): string {
+  if (cost == null) return '--'
+  if (cost < 0.01) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
+}
+
 function truncate(text: string | null, maxLength: number): string {
   if (!text) return '--'
   if (text.length <= maxLength) return text
@@ -82,6 +88,9 @@ export default async function TracesPage() {
                     Tokens
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Cost
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Latency
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -125,6 +134,9 @@ export default async function TracesPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-gray-500 font-mono">
                         {formatTokens(trace.totalTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-gray-500 font-mono">
+                        {formatCost(trace.cost)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-gray-500 font-mono">
                         {formatLatency(trace.latencyMs)}

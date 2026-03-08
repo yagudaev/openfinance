@@ -10,6 +10,7 @@ import { createChatTools } from '@/lib/chat/tools'
 import { loadMemoriesForPrompt } from '@/lib/chat/memory'
 import { getCategoriesForClassifier } from '@/lib/services/expense-categories'
 import { agent } from '@/voltagent'
+import { fetchPricing, calculateCost } from '@/lib/pricing'
 
 export const maxDuration = 120
 
@@ -149,6 +150,18 @@ export async function POST(request: Request) {
           },
         })) ?? []
 
+        const inputTok = totalUsage?.inputTokens ?? 0
+        const outputTok = totalUsage?.outputTokens ?? 0
+
+        let cost: number | null = null
+        try {
+          const pricing = await fetchPricing()
+          const estimated = calculateCost(modelId, inputTok, outputTok, pricing)
+          if (estimated > 0) cost = estimated
+        } catch {
+          // pricing fetch failed — cost stays null
+        }
+
         const trace = await prisma.chatTrace.create({
           data: {
             userId: session.user.id,
@@ -156,7 +169,8 @@ export async function POST(request: Request) {
             model: modelId,
             inputTokens: totalUsage?.inputTokens ?? null,
             outputTokens: totalUsage?.outputTokens ?? null,
-            totalTokens: (totalUsage?.inputTokens ?? 0) + (totalUsage?.outputTokens ?? 0) || null,
+            totalTokens: inputTok + outputTok || null,
+            cost,
             latencyMs,
             finishReason: finishReason ?? null,
             steps: JSON.stringify(stepsData),

@@ -1,4 +1,5 @@
 import { agent } from '../agents'
+import { fetchPricing, calculateCost } from '@/lib/pricing'
 
 const MODELS = [
   'openrouter/z-ai/glm-4.7',
@@ -79,14 +80,9 @@ async function runEval(
   const allToolCalls = result.steps?.flatMap(step => step.toolCalls) ?? []
   const toolNames = allToolCalls.map(tc => tc.toolName)
 
-  const usage = result.usage
-  const inputTokens = usage?.inputTokens ?? 0
-  const outputTokens = usage?.outputTokens ?? 0
-  const orModelId = modelId.replace('openrouter/', '')
-  const price = pricing[orModelId]
-  const cost = price
-    ? inputTokens * price.prompt + outputTokens * price.completion
-    : 0
+  const inputTokens = result.usage?.inputTokens ?? 0
+  const outputTokens = result.usage?.outputTokens ?? 0
+  const cost = calculateCost(modelId, inputTokens, outputTokens, pricing)
   totalCost += cost
 
   console.log(`  Tool calls: ${toolNames.length > 0 ? toolNames.join(', ') : '(none)'}`)
@@ -107,29 +103,7 @@ async function runEval(
   }
 }
 
-// --- helpers ---
-
-async function fetchPricing(): Promise<Record<string, { prompt: number, completion: number }>> {
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/models')
-    const data = await res.json() as {
-      data: Array<{ id: string, pricing?: { prompt?: string, completion?: string } }>
-    }
-    const pricing: Record<string, { prompt: number, completion: number }> = {}
-    for (const model of data.data) {
-      if (model.pricing?.prompt && model.pricing?.completion) {
-        pricing[model.id] = {
-          prompt: parseFloat(model.pricing.prompt),
-          completion: parseFloat(model.pricing.completion),
-        }
-      }
-    }
-    return pricing
-  } catch {
-    console.warn('  Could not fetch pricing from OpenRouter, costs will show as $0')
-    return {}
-  }
-}
+// --- test helpers ---
 
 let passed = 0
 let failed = 0

@@ -297,6 +297,7 @@ model ChatTrace {
   inputTokens    Int?
   outputTokens   Int?
   totalTokens    Int?
+  cost           Float?   // Estimated cost in USD at time of trace
   latencyMs      Int?
   finishReason   String?
   steps          String   // JSON: array of step data (tool calls, tool results, text)
