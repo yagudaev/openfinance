@@ -281,8 +281,8 @@ export function SettingsForm({ settings: initial, accounts: initialAccounts }: S
                 <option value="openrouter/z-ai/glm-4.7">GLM 4.7 (fastest)</option>
                 <option value="openrouter/z-ai/glm-5">GLM 5 (flagship, 744B)</option>
                 <option value="openrouter/anthropic/claude-sonnet-4-5">Claude Sonnet 4.5</option>
-                <option value="openrouter/google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
-                <option value="openrouter/google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+                <option value="openrouter/google/gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+                <option value="openrouter/google/gemini-3-flash-preview">Gemini 3 Flash</option>
               </optgroup>
               <optgroup label="OpenAI (Direct)">
                 <option value="openai/gpt-4o-mini">GPT-4o Mini</option>

@@ -113,6 +113,12 @@ export default async function TraceDetailPage({ params }: Props) {
             <dd className="mt-1 font-mono text-sm text-gray-900">{trace.totalTokens ?? '--'}</dd>
           </div>
           <div>
+            <dt className="text-xs text-gray-500">Cost</dt>
+            <dd className="mt-1 font-mono text-sm text-gray-900">
+              {trace.cost != null ? (trace.cost < 0.01 ? `$${trace.cost.toFixed(4)}` : `$${trace.cost.toFixed(2)}`) : '--'}
+            </dd>
+          </div>
+          <div>
             <dt className="text-xs text-gray-500">Tool Calls</dt>
             <dd className="mt-1 font-mono text-sm text-gray-900">{totalToolCalls}</dd>
           </div>

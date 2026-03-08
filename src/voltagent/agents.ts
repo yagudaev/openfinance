@@ -4,6 +4,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 
 import { safeEvaluate } from '@/lib/chat/finance-tools'
+import { buildSystemPrompt } from '@/lib/chat/system-prompt'
 
 export const evaluateExpressionTool = createTool({
   name: 'evaluate_expression',
@@ -79,8 +80,12 @@ export const predictInvestmentGrowthTool = createTool({
 export const agent = new Agent({
   name: 'OpenFinance',
   instructions: ({ context }): string => {
-    const instructions = context?.get('systemPrompt') as string | undefined
-    return instructions ?? 'You are a knowledgeable financial advisor embedded in OpenFinance.'
+    return buildSystemPrompt({
+      userContext: context?.get('userContext') as string | undefined,
+      memories: context?.get('memories') as string | undefined,
+      isNewUser: context?.get('isNewUser') as boolean | undefined,
+      expenseCategories: context?.get('expenseCategories') as string | undefined,
+    })
   },
   model: ({ context }) => {
     const modelId = (context?.get('modelId') as string | undefined) ?? 'openrouter/z-ai/glm-4.7'
