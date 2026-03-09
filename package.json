@@ -16,8 +16,8 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:prod": "BASE_URL=https://openfinance.to playwright test e2e/production.spec.ts",
-    "test:volt": "node --env-file=.env node_modules/.bin/volt eval run --experiment ./src/voltagent/evals/math-tool-usage.ts",
-    "test:volt:all": "bash ./src/voltagent/evals/run-all.sh"
+    "test:volt": "node --env-file=.env node_modules/.bin/volt eval run --experiment ./src/voltagent/evals/math-tool-usage.experiment.ts",
+    "test:volt:all": "tsx --env-file=.env ./src/voltagent/evals/run-all.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.30",
