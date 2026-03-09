@@ -1,5 +1,5 @@
 import { runExperiment } from '@voltagent/evals'
-import { VoltOpsClient } from '@voltagent/sdk'
+import { AgentRegistry, VoltOpsClient } from '@voltagent/core'
 
 import { createMathExperiment } from './math-tool-usage.experiment'
 import { createInvestmentGrowthExperiment } from './investment-growth.experiment'
@@ -30,6 +30,10 @@ async function main() {
     secretKey: process.env.VOLTAGENT_SECRET_KEY!,
   })
 
+  // Register globally so the agent's LazyRemoteExportProcessor can
+  // find it and export OTel traces (cost/tokens) to VoltOps cloud
+  AgentRegistry.getInstance().setGlobalVoltOpsClient(voltOpsClient)
+
   let allPassed = true
 
   for (const modelId of modelsToRun) {
@@ -53,6 +57,12 @@ async function main() {
 
   console.log(`\n${'='.repeat(60)}`)
   console.log(allPassed ? 'All evals passed!' : 'Some evals failed.')
+
+  // Flush OTel spans to VoltOps before process.exit() kills the process
+  const observability = AgentRegistry.getInstance().getGlobalObservability()
+  if (observability) {
+    await observability.forceFlush()
+  }
 
   return allPassed
 }
