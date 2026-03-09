@@ -21,6 +21,9 @@ main()
   })
 
 async function main() {
+  const modelArg = process.argv[2]
+  const modelsToRun = modelArg ? [modelArg] : MODELS
+
   const voltOpsClient = new VoltOpsClient({
     publicKey: process.env.VOLTAGENT_PUBLIC_KEY!,
     secretKey: process.env.VOLTAGENT_SECRET_KEY!,
@@ -28,7 +31,7 @@ async function main() {
 
   let allPassed = true
 
-  for (const modelId of MODELS) {
+  for (const modelId of modelsToRun) {
     console.log(`\n${'='.repeat(60)}`)
     console.log(`Model: ${modelId}`)
     console.log('='.repeat(60))
