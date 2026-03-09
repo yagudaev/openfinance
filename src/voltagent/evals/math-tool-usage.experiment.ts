@@ -71,8 +71,15 @@ export function createMathExperiment(modelId: string) {
         pricing = await fetchPricing()
       }
 
+      let traceId: string | undefined
+
       const result = await agent.generateText(String(item.input), {
         context: { modelId },
+        hooks: {
+          onEnd: ({ context }) => {
+            traceId = context.traceContext.getRootSpan().spanContext().traceId
+          },
+        },
       })
 
       const toolCalls = (result.steps?.flatMap((step) => step.toolCalls) ?? []).map((tc) => ({
@@ -88,6 +95,7 @@ export function createMathExperiment(modelId: string) {
       return {
         output,
         metadata: { modelId, inputTokens, outputTokens, cost },
+        traceIds: traceId ? [traceId] : undefined,
       }
     },
 
