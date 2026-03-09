@@ -1,3 +1,8 @@
+import { createExperiment, runExperiment } from '@voltagent/evals'
+import { createToolCallAccuracyScorerCode } from '@voltagent/scorers'
+import { buildScorer } from '@voltagent/core'
+import { VoltOpsClient } from '@voltagent/sdk'
+
 import { agent } from '../agents'
 import { fetchPricing, calculateCost } from '@/lib/pricing'
 
@@ -11,21 +16,102 @@ const MODELS = [
   'openrouter/openai/gpt-4o',
 ]
 
-interface EvalCase {
-  name: string
-  prompt: string
-  expectedToolName: string
-  expectedAnswer?: number
+// --- types ---
+
+interface RunnerOutput {
+  text: string | undefined
+  toolCalls: Array<{ toolName: string; args?: Record<string, unknown> }>
 }
 
-const cases: EvalCase[] = [
-  {
-    name: 'percentage calculation',
-    prompt: 'What is 18% of $4,250?',
-    expectedToolName: 'evaluate_expression',
-    expectedAnswer: 765,
+// --- scorers ---
+
+const toolUsageScorer = createToolCallAccuracyScorerCode({
+  id: 'tool-usage',
+  name: 'Tool Usage',
+  expectedTool: 'evaluate_expression',
+  strictMode: false,
+  buildPayload: ({ payload }) => {
+    const output = payload.output as RunnerOutput
+    return { toolCalls: output.toolCalls }
   },
-]
+})
+
+const answerCorrectnessScorer = buildScorer({
+  id: 'answer-correctness',
+  label: 'Answer Correctness',
+  description: 'Checks if the expected numeric answer appears in the response text',
+})
+  .score(({ payload }) => {
+    const expected = payload.expected as number | undefined
+    if (expected === undefined) return { score: 1.0, metadata: { skipped: true } }
+    const output = payload.output as RunnerOutput
+    const found = output.text?.includes(String(expected)) ?? false
+    return { score: found ? 1.0 : 0.0, metadata: { expected, found } }
+  })
+  .reason(({ score }) =>
+    (score ?? 0) >= 1.0 ? 'Expected answer found in response' : 'Expected answer not found in response',
+  )
+  .build()
+
+// --- experiment factory ---
+
+let pricing: Record<string, { prompt: number; completion: number }> = {}
+
+function createMathExperiment(modelId: string) {
+  return createExperiment({
+    id: `math-tool-usage-${modelId.replace(/\//g, '-')}`,
+    label: `Math Tool Usage — ${modelId}`,
+    description: `Verifies ${modelId} uses evaluate_expression tool for math prompts`,
+
+    dataset: {
+      items: [
+        {
+          id: 'percentage-calculation',
+          input: 'What is 18% of $4,250?',
+          expected: 765,
+        },
+      ],
+    },
+
+    runner: async ({ item }) => {
+      const result = await agent.generateText(String(item.input), {
+        context: { modelId },
+      })
+
+      const toolCalls = (result.steps?.flatMap((step) => step.toolCalls) ?? []).map((tc) => ({
+        toolName: tc.toolName,
+        args: 'args' in tc ? (tc.args as Record<string, unknown>) : undefined,
+      }))
+
+      const inputTokens = result.usage?.inputTokens ?? 0
+      const outputTokens = result.usage?.outputTokens ?? 0
+      const cost = calculateCost(modelId, inputTokens, outputTokens, pricing)
+
+      const output: RunnerOutput = { text: result.text, toolCalls }
+      return {
+        output,
+        metadata: { modelId, inputTokens, outputTokens, cost },
+      }
+    },
+
+    scorers: [
+      { scorer: toolUsageScorer, threshold: 1.0 },
+      { scorer: answerCorrectnessScorer, threshold: 1.0 },
+    ],
+
+    passCriteria: [
+      { type: 'passRate' as const, min: 1.0, label: 'All items must pass' },
+    ],
+
+    experiment: {
+      name: 'math-tool-usage',
+      autoCreate: true,
+    },
+
+    tags: ['eval', 'math', 'tool-usage'],
+    metadata: { modelId },
+  })
+}
 
 // --- entry point ---
 
@@ -35,86 +121,55 @@ main().catch((error) => {
 })
 
 async function main() {
-  console.log('Running VoltAgent evals...')
-  console.log(`Models: ${MODELS.length}`)
+  const modelArg = process.argv[2]
+  const modelsToRun = modelArg ? [modelArg] : MODELS
 
-  const pricing = await fetchPricing()
+  console.log(`Running math-tool-usage eval for ${modelsToRun.length} model(s)...\n`)
+
+  pricing = await fetchPricing()
   console.log(`Pricing: ${Object.keys(pricing).length} models loaded\n`)
 
-  for (const modelId of MODELS) {
-    for (const evalCase of cases) {
-      try {
-        await runEval(modelId, evalCase, pricing)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        console.error(`\n  ERROR [${modelId}] ${evalCase.name}: ${message}`)
-        failed++
-      }
+  const voltOpsClient = new VoltOpsClient({
+    publicKey: process.env.VOLTAGENT_PUBLIC_KEY!,
+    secretKey: process.env.VOLTAGENT_SECRET_KEY!,
+  })
+
+  let allPassed = true
+
+  for (const modelId of modelsToRun) {
+    console.log(`\n${'='.repeat(60)}`)
+    console.log(`Model: ${modelId}`)
+    console.log('='.repeat(60))
+
+    const experiment = createMathExperiment(modelId)
+    const result = await runExperiment(experiment, {
+      voltOpsClient,
+      onItem: ({ item, result: itemResult }) => {
+        const meta = itemResult.runner?.metadata as Record<string, unknown> | undefined
+        console.log(`  [${item.id}]`)
+        console.log(`    Tokens: ${meta?.inputTokens ?? '?'} in / ${meta?.outputTokens ?? '?'} out — $${Number(meta?.cost ?? 0).toFixed(4)}`)
+
+        for (const [scorerId, score] of Object.entries(itemResult.scores ?? {})) {
+          const icon = (score.score ?? 0) >= (score.threshold ?? 0) ? 'PASS' : 'FAIL'
+          console.log(`    ${icon}: ${scorerId} — ${score.score} ${score.reason ? `(${score.reason})` : ''}`)
+        }
+      },
+    })
+
+    const { summary } = result
+    console.log(`\n  Summary: ${summary.successCount}/${summary.totalCount} passed, mean score ${summary.meanScore?.toFixed(2) ?? 'N/A'}`)
+
+    if (summary.failureCount > 0 || summary.errorCount > 0) {
+      allPassed = false
     }
   }
 
-  console.log(`\n${passed} passed, ${failed} failed`)
-  console.log(`Total cost: $${totalCost.toFixed(4)}`)
-
-  if (failed > 0) {
-    process.exit(1)
-  } else {
-    console.log('\nAll evals passed!')
+  console.log(`\n${'='.repeat(60)}`)
+  if (allPassed) {
+    console.log('All evals passed!')
     process.exit(0)
-  }
-}
-
-async function runEval(
-  modelId: string,
-  evalCase: EvalCase,
-  pricing: Record<string, { prompt: number, completion: number }>,
-) {
-  const label = `[${modelId}] ${evalCase.name}`
-  console.log(`\nEval: ${label}`)
-  console.log(`  Prompt: "${evalCase.prompt}"`)
-
-  const result = await agent.generateText(evalCase.prompt, {
-    context: { modelId },
-  })
-
-  const allToolCalls = result.steps?.flatMap(step => step.toolCalls) ?? []
-  const toolNames = allToolCalls.map(tc => tc.toolName)
-
-  const inputTokens = result.usage?.inputTokens ?? 0
-  const outputTokens = result.usage?.outputTokens ?? 0
-  const cost = calculateCost(modelId, inputTokens, outputTokens, pricing)
-  totalCost += cost
-
-  console.log(`  Tool calls: ${toolNames.length > 0 ? toolNames.join(', ') : '(none)'}`)
-  console.log(`  Tokens: ${inputTokens} in / ${outputTokens} out — $${cost.toFixed(4)}`)
-  console.log(`  Response: ${result.text?.slice(0, 120)}...`)
-
-  assert(
-    toolNames.includes(evalCase.expectedToolName),
-    `${label}: used ${evalCase.expectedToolName} (got: [${toolNames.join(', ')}])`,
-  )
-
-  if (evalCase.expectedAnswer !== undefined) {
-    const hasCorrectAnswer = result.text?.includes(String(evalCase.expectedAnswer)) ?? false
-    assert(
-      hasCorrectAnswer,
-      `${label}: response contains ${evalCase.expectedAnswer}`,
-    )
-  }
-}
-
-// --- test helpers ---
-
-let passed = 0
-let failed = 0
-let totalCost = 0
-
-function assert(condition: boolean, message: string) {
-  if (condition) {
-    console.log(`  PASS: ${message}`)
-    passed++
   } else {
-    console.error(`  FAIL: ${message}`)
-    failed++
+    console.log('Some evals failed.')
+    process.exit(1)
   }
 }
