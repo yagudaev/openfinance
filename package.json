@@ -16,8 +16,8 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:prod": "BASE_URL=https://openfinance.to playwright test e2e/production.spec.ts",
-    "test:volt": "tsx --env-file=.env ./src/voltagent/evals/math-tool-usage.ts openrouter/openai/gpt-4o-mini",
-    "test:volt:all": "tsx --env-file=.env ./src/voltagent/evals/math-tool-usage.ts"
+    "test:volt": "node --env-file=.env node_modules/.bin/volt eval run --experiment ./src/voltagent/evals/math-tool-usage.ts",
+    "test:volt:all": "for m in openrouter/z-ai/glm-4.7 openrouter/z-ai/glm-5 openrouter/anthropic/claude-sonnet-4-5 openrouter/google/gemini-3.1-pro-preview openrouter/google/gemini-3-flash-preview openrouter/openai/gpt-4o-mini openrouter/openai/gpt-4o; do EVAL_MODEL=$m node --env-file=.env node_modules/.bin/volt eval run --experiment ./src/voltagent/evals/math-tool-usage.ts || exit 1; done"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.30",
@@ -69,6 +69,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@voltagent/cli": "^0.1.21",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.0-canary.56",
     "postcss": "^8.0.0",
