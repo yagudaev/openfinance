@@ -2,6 +2,7 @@ import { runExperiment } from '@voltagent/evals'
 import { VoltOpsClient } from '@voltagent/sdk'
 
 import { createMathExperiment } from './math-tool-usage.experiment'
+import { createInvestmentGrowthExperiment } from './investment-growth.experiment'
 
 const MODELS = [
   'openrouter/z-ai/glm-4.7',
@@ -36,16 +37,18 @@ async function main() {
     console.log(`Model: ${modelId}`)
     console.log('='.repeat(60))
 
-    const experiment = createMathExperiment(modelId)
-    const result = await runExperiment(experiment, { voltOpsClient })
+    const mathResult = await runExperiment(createMathExperiment(modelId), { voltOpsClient })
+    const investmentResult = await runExperiment(createInvestmentGrowthExperiment(modelId), { voltOpsClient })
 
-    const { summary } = result
-    const passed = summary.failureCount === 0 && summary.errorCount === 0
-    const icon = passed ? 'PASS' : 'FAIL'
+    for (const result of [mathResult, investmentResult]) {
+      const { summary } = result
+      const passed = summary.failureCount === 0 && summary.errorCount === 0
+      const icon = passed ? 'PASS' : 'FAIL'
 
-    console.log(`  ${icon}: ${summary.successCount}/${summary.totalCount} passed, mean score ${summary.meanScore?.toFixed(2) ?? 'N/A'}`)
+      console.log(`  ${icon}: ${summary.successCount}/${summary.totalCount} passed, mean score ${summary.meanScore?.toFixed(2) ?? 'N/A'}`)
 
-    if (!passed) allPassed = false
+      if (!passed) allPassed = false
+    }
   }
 
   console.log(`\n${'='.repeat(60)}`)
